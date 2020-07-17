@@ -54,3 +54,5 @@ dkms.conf
 # Vi
 ~
 *swp*
+
+build*
