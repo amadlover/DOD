@@ -1,9 +1,10 @@
 #pragma once
 
 #include <stdint.h>
+#include <Windows.h>
 
 void game_init ();
-void game_reserve_memory_for_actors (size_t num_actors);
-void game_add_actor ();
+void game_process_left_mouse_click (size_t x, size_t y);
+void game_process_right_mouse_click (size_t x, size_t y);
 void game_update ();
 void game_exit ();

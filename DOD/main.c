@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <Windowsx.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,10 +29,12 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
 
         case WM_LBUTTONDOWN:
             printf ("left button down\n");
+            game_process_left_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
             break;
 
         case WM_RBUTTONDOWN:
             printf ("right button down\n");
+            game_process_right_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
             break;
 
         case WM_MOUSEMOVE:
@@ -84,7 +87,6 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     UpdateWindow (h_wnd);
 
     game_init ();
-    game_reserve_memory_for_actors (10);
 
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));
