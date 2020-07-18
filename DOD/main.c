@@ -5,9 +5,11 @@
 
 #include "game.h"
 
-
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
+    PAINTSTRUCT ps;
+    HDC hdc;
+
     switch (msg)
     {
         case WM_COMMAND:
