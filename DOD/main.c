@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <Windowsx.h>
+#include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -7,9 +8,6 @@
 
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
-    PAINTSTRUCT ps;
-    HDC hdc;
-
     switch (msg)
     {
         case WM_COMMAND:

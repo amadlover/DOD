@@ -1,6 +1,8 @@
 #include "game.h"
+#include "graphics.h"
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
 
 /*
  * OOP struct
@@ -26,7 +28,7 @@ typedef struct vec2_
 
 vec2* actors_positions = NULL; // x,y positions clamped between -100 and +100
 vec2* actors_directions = NULL; // x,y normalized vectors
-float* actors_rotations = NULL; // float value
+vec2* actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 
 size_t memory_reserved_for_actors = 0;
 size_t num_actors = 0;
@@ -37,13 +39,14 @@ void game_reserve_memory_for_actors (size_t actors_to_reserve)
     
     actors_positions = (vec2*) calloc (memory_reserved_for_actors, sizeof (vec2));
     actors_directions = (vec2*) calloc (memory_reserved_for_actors, sizeof (vec2));
-    actors_rotations = (float*) calloc (memory_reserved_for_actors, sizeof (float));
+    actors_rotations = (vec2*) calloc (memory_reserved_for_actors, sizeof (vec2));
 }
 
 void game_init ()
 {
     game_reserve_memory_for_actors (5);
-    srand (time (0));
+    srand (time (NULL));
+    graphics_init ();
 }
 
 void game_add_actor (size_t x, size_t y)
@@ -53,7 +56,7 @@ void game_add_actor (size_t x, size_t y)
         memory_reserved_for_actors += 5;
         actors_positions = (vec2*) realloc (actors_positions, sizeof (vec2) * memory_reserved_for_actors);
         actors_directions = (vec2*) realloc (actors_directions, sizeof (vec2) * memory_reserved_for_actors);
-        actors_rotations = (float*) realloc (actors_rotations, sizeof (float) * memory_reserved_for_actors);
+        actors_rotations = (vec2*) realloc (actors_rotations, sizeof (vec2) * memory_reserved_for_actors);
     }
     
     actors_positions[num_actors].x = ((float)x / (float)640) * 200.f - 100.f;
@@ -62,15 +65,16 @@ void game_add_actor (size_t x, size_t y)
     actors_directions[num_actors].x = (float)rand () / (float)RAND_MAX;
     actors_directions[num_actors].y = (float)rand () / (float)RAND_MAX;
     
-    actors_rotations[num_actors] = (float)rand () / (float)RAND_MAX * 360.f;
-    
+    actors_rotations[num_actors].x = (float)rand () / (float)RAND_MAX * 360.f;
+    actors_rotations[num_actors].y = (float)rand () / (float)RAND_MAX * 10.f;
+
     ++num_actors;
 
     for (size_t n = 0; n < num_actors; ++n)
     {
         printf ("Positions n = %d, x = %f, y = %f\n", n, actors_positions[n].x, actors_positions[n].y);
         printf ("Directions n = %d, x = %f, y = %f\n", n, actors_directions[n].x, actors_directions[n].y);
-        printf ("Rotations n = %d, r = %f\n", n, actors_rotations[n]);
+        printf ("Rotations n = %d, r = %f, s = %f\n", n, actors_rotations[n].x,  actors_rotations[n].y);
     }
 }
 
@@ -92,6 +96,7 @@ void game_update ()
     
     for (size_t n = 0; n < num_actors; ++n)
     {
+        actors_rotations[n].x += actors_rotations[n].y;
     }
 }
 
@@ -100,4 +105,6 @@ void game_exit ()
     free (actors_positions);
     free (actors_directions);
     free (actors_rotations);
+
+    graphics_exit ();
 }

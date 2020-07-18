@@ -1,0 +1,118 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Debug X86",
+        "type": "shell",
+        "command": "cl.exe",
+        "args": [
+          "/DDEBUG",
+          "/D_DEBUG",
+          "/DUNICODE",
+          "/DWIN32_LEAN_AND_MEAN",
+          "/DWIN32",
+          "/D_CRT_SECURE_NO_WARNINGS",
+          "/I${env:VULKAN_SDK}/Include",
+          "/MDd",
+          "/W3",
+          "/Z7",
+          "/MP",
+          "DOD/graphics.c",
+          "DOD/game.c",
+          "DOD/main.c",
+          "user32.lib",
+          "vulkan-1.lib",
+          "/Fo${workspaceFolder}/build32/debug/",
+          "/Fe${workspaceFolder}/build32/debug/DOD.exe",
+          "/link",
+          "/LIBPATH:${env:VULKAN_SDK}/Lib32",
+          "/DEBUG:FASTLINK",
+          "/MACHINE:X86",
+          "/SUBSYSTEM:WINDOWS",
+          "/incremental"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always"
+        },
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "Release X86",
+        "type": "shell",
+        "command": "cl.exe",
+        "args": [
+          "/DNDEBUG",
+          "/DUNICODE",
+          "/DWIN32_LEAN_AND_MEAN",
+          "/DWIN32",
+          "/D_CRT_SECURE_NO_WARNINGS",
+          "/I${env:VULKAN_SDK}/Include",
+          "/MD",
+          "/W3",
+          "/Ox",
+          "/MP",
+          "DOD/graphics.c",
+          "DOD/game.c",
+          "DOD/main.c",
+          "user32.lib",
+          "vulkan-1.lib",
+          "/Fo${workspaceFolder}/build32/release/",
+          "/Fe${workspaceFolder}/build32/release/DOD.exe",
+          "/link",
+          "/LIBPATH:${env:VULKAN_SDK}/Lib32",
+          "/MACHINE:X86",
+          "/SUBSYSTEM:WINDOWS",
+          "/incremental"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always"
+        },
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "Debug Asset Copy",
+        "type": "shell",
+        "command": "Copy-Item -Path '${workspaceFolder}/DOD/Assets/*' -Destination '${workspaceFolder}/build32/debug/' -Recurse -Force",
+        "group":{
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always",
+        }
+      },
+      {
+        "label": "Release Asset Copy",
+        "type": "shell",
+        "command": "Copy-Item -Path '${workspaceFolder}/DOD/Assets/*' -Destination '${workspaceFolder}/build32/release/' -Recurse -Force",
+        "group":{
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always",
+        }
+      },
+      {
+        "label": "Launch Release",
+        "type": "shell",
+        "command": "${workspaceFolder}/build32/release/DOD.exe",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation":{
+          "reveal": "always",
+        },
+        "problemMatcher": []
+      }
+    ]
+  }
