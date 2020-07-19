@@ -86,7 +86,12 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     ShowWindow (h_wnd, cmd_show);
     UpdateWindow (h_wnd);
 
-    game_init ();
+    int result = game_init ();
+    if (result != 0)
+    {
+        printf ("Error %d\n", result);
+        return EXIT_FAILURE;
+    }
 
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));

@@ -1,5 +1,5 @@
 #pragma once
 
 
-void graphics_init ();
+int graphics_init (void);
 void graphics_exit ();

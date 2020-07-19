@@ -42,11 +42,12 @@ void game_reserve_memory_for_actors (size_t actors_to_reserve)
     actors_rotations = (vec2*) calloc (memory_reserved_for_actors, sizeof (vec2));
 }
 
-void game_init ()
+int game_init ()
 {
     game_reserve_memory_for_actors (5);
     srand (time (NULL));
-    graphics_init ();
+    
+    return graphics_init ();
 }
 
 void game_add_actor (size_t x, size_t y)
