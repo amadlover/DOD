@@ -42,12 +42,20 @@ void game_reserve_memory_for_actors (size_t actors_to_reserve)
     actors_rotations = (vec2*) calloc (memory_reserved_for_actors, sizeof (vec2));
 }
 
-int game_init ()
+AGE_RESULT game_init (HINSTANCE h_instance, HWND h_wnd)
 {
     game_reserve_memory_for_actors (5);
     srand (time (NULL));
     
-    return graphics_init ();
+    AGE_RESULT result = graphics_init (h_instance, h_wnd);
+
+    if (result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+exit:  // place to clean up local allocations
+    return result;
 }
 
 void game_add_actor (size_t x, size_t y)
