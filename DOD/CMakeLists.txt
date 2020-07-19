@@ -1,6 +1,14 @@
 cmake_minimum_required (VERSION 3.8)
 
-set (HPP)
-set (CPP main.cpp)
+add_definitions (-DUNICODE -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS)
 
-add_executable (DOD ${HPP} ${CPP})
+include_directories ($ENV{VULKAN_SDK}/Include)
+include_directories (${CMAKE_SOURCE_DIR}/External/stb)
+
+link_directories ($ENV{VULKAN_SDK}/Lib32)
+
+set (H graphics.h game.h utils.h)
+set (C graphics.c game.c utils.c main.c)
+
+add_executable (DOD WIN32 ${H} ${C})
+target_link_libraries (DOD vulkan-1)

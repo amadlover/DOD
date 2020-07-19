@@ -28,12 +28,10 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             break;
 
         case WM_LBUTTONDOWN:
-            printf ("left button down\n");
             game_process_left_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
             break;
 
         case WM_RBUTTONDOWN:
-            printf ("right button down\n");
             game_process_right_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
             break;
 
@@ -90,6 +88,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     if (result != 0)
     {
         printf ("Error %d\n", result);
+        goto exit;
         return EXIT_FAILURE;
     }
 
@@ -109,6 +108,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         }
     }
 
+ exit:
     game_exit ();
 
     DestroyWindow (h_wnd);

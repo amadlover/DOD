@@ -1,0 +1,6 @@
+[submodule "stb"]
+	path = stb
+	url = git@github.com:nothings/stb
+[submodule "External/stb"]
+	path = External/stb
+	url = git@github.com:nothings/stb.git

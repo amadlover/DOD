@@ -55,9 +55,38 @@ void game_add_actor (size_t x, size_t y)
     if (num_actors == memory_reserved_for_actors)
     {
         memory_reserved_for_actors += 5;
-        actors_positions = (vec2*) realloc (actors_positions, sizeof (vec2) * memory_reserved_for_actors);
-        actors_directions = (vec2*) realloc (actors_directions, sizeof (vec2) * memory_reserved_for_actors);
-        actors_rotations = (vec2*) realloc (actors_rotations, sizeof (vec2) * memory_reserved_for_actors);
+        
+        vec2* temp = (vec2*)realloc (actors_positions, sizeof (vec2) * memory_reserved_for_actors);
+        if (temp != NULL)
+        {
+            actors_positions = temp;
+        }
+        else
+        {
+            printf ("Could not realloc %d bytes for actor_positions\n", sizeof (vec2) * memory_reserved_for_actors);
+        }
+        
+        temp = (vec2*)realloc (actors_directions, sizeof (vec2) * memory_reserved_for_actors);
+
+        if (temp != NULL)
+        {
+            actors_directions = temp;
+        }
+        else
+        {
+            printf ("Could not realloc %d bytes for actor_directions\n", sizeof (vec2) * memory_reserved_for_actors);
+        }
+        
+        temp = (vec2*)realloc (actors_rotations, sizeof (vec2) * memory_reserved_for_actors);
+
+        if (temp != NULL)
+        {
+            actors_rotations = temp;
+        }
+        else
+        {
+            printf ("Could not realloc %d bytes for actor_rotations\n", sizeof (vec2) * memory_reserved_for_actors);
+        }
     }
     
     actors_positions[num_actors].x = ((float)x / (float)640) * 200.f - 100.f;
