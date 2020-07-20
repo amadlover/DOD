@@ -33,6 +33,14 @@ VkQueue graphics_queue = VK_NULL_HANDLE;
 VkQueue compute_queue = VK_NULL_HANDLE;
 VkQueue transfer_queue = VK_NULL_HANDLE;
 
+VkCommandBuffer* swapchain_command_buffers = NULL;
+VkFramebuffer* swapchain_framebuffers = NULL;
+
+VkRenderPass render_pass = VK_NULL_HANDLE;
+
+VkSemaphore wait_semaphore = VK_NULL_HANDLE;
+VkSemaphore* swapchain_signal_semaphores = NULL;
+
 VkResult create_debug_utils_messenger (VkInstance instance,
 	const VkDebugUtilsMessengerCreateInfoEXT* debug_utils_messenger_create_info,
 	const VkAllocationCallbacks* allocation_callbacks,
@@ -99,7 +107,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
     {
         size_t num_layers = 0;
         vkEnumerateInstanceLayerProperties (&num_layers, NULL);
-        VkLayerProperties* layer_properties = (VkLayerProperties*)utils_malloc (sizeof (VkLayerProperties) * num_layers);
+		VkLayerProperties* layer_properties = (VkLayerProperties*)utils_calloc (num_layers, sizeof (VkLayerProperties));
         vkEnumerateInstanceLayerProperties (&num_layers, layer_properties);
 
         for (size_t l = 0; l < num_layers; l++)
@@ -129,7 +137,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	size_t num_extensions = 0;
 	vkEnumerateInstanceExtensionProperties (NULL, &num_extensions, NULL);
 
-	VkExtensionProperties* extension_properties = (VkExtensionProperties*)utils_malloc (sizeof (VkExtensionProperties) * num_extensions);
+	VkExtensionProperties* extension_properties = (VkExtensionProperties*)utils_calloc (num_extensions, sizeof (VkExtensionProperties));
 	vkEnumerateInstanceExtensionProperties (NULL, &num_extensions, extension_properties);
 
 	for (size_t e = 0; e < num_extensions; e++)
@@ -230,7 +238,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 		goto exit;
 	}
 
-	VkPhysicalDevice* physical_devices = (VkPhysicalDevice*) utils_malloc (sizeof (VkPhysicalDevice) * num_physical_devices);
+	VkPhysicalDevice* physical_devices = (VkPhysicalDevice*) utils_calloc (num_physical_devices, sizeof (VkPhysicalDevice));
 	vkEnumeratePhysicalDevices (instance, &num_physical_devices, physical_devices);
 
 	physical_device = physical_devices[0];
@@ -240,7 +248,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	size_t num_queue_families = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties (physical_device, &num_queue_families, NULL);
-	VkQueueFamilyProperties* queue_family_properties = (VkQueueFamilyProperties*)utils_malloc (sizeof (VkQueueFamilyProperties) * num_queue_families);
+	VkQueueFamilyProperties* queue_family_properties = (VkQueueFamilyProperties*)utils_calloc (num_queue_families, sizeof (VkQueueFamilyProperties));
 	vkGetPhysicalDeviceQueueFamilyProperties (physical_device, &num_queue_families, queue_family_properties);
 
 	for (size_t i = 0; i < num_queue_families; ++i)
@@ -324,7 +332,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	size_t num_surface_formats = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &num_surface_formats, NULL);
 
-	VkSurfaceFormatKHR* surface_formats = (VkSurfaceFormatKHR*)utils_malloc (sizeof (VkSurfaceFormatKHR) * num_surface_formats);
+	VkSurfaceFormatKHR* surface_formats = (VkSurfaceFormatKHR*)utils_calloc (num_surface_formats, sizeof (VkSurfaceFormatKHR));
 	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &num_surface_formats, surface_formats);
 
 	for (size_t s = 0; s < num_surface_formats; s++)
@@ -339,7 +347,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	size_t num_present_modes = 0;
 	vkGetPhysicalDeviceSurfacePresentModesKHR (physical_device, surface, &num_present_modes, NULL);
 
-	VkPresentModeKHR* present_modes = (VkPresentModeKHR*)utils_malloc (sizeof (VkPresentModeKHR) * num_present_modes);
+	VkPresentModeKHR* present_modes = (VkPresentModeKHR*)utils_calloc (num_present_modes, sizeof (VkPresentModeKHR));
 	vkGetPhysicalDeviceSurfacePresentModesKHR (physical_device, surface, &num_present_modes, present_modes);
 
 	for (size_t p = 0; p < num_present_modes; p++)
@@ -357,7 +365,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	num_extensions = 0;
 	vkEnumerateDeviceExtensionProperties (physical_device, NULL, &num_extensions, NULL);
 
-	extension_properties = (VkExtensionProperties*)utils_malloc (sizeof (VkExtensionProperties) * num_extensions);
+	extension_properties = (VkExtensionProperties*)utils_calloc (num_extensions, sizeof (VkExtensionProperties));
 	vkEnumerateDeviceExtensionProperties (physical_device, NULL, &num_extensions, extension_properties);
 
 	for (size_t e = 0; e < num_extensions; e++)
@@ -470,9 +478,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	}
 	
 	vkGetSwapchainImagesKHR (graphics_device, swapchain, &num_swapchain_images, NULL);
-	swapchain_images = (VkImage*) utils_malloc (sizeof (VkImage) * num_swapchain_images);
+	swapchain_images = (VkImage*) utils_calloc (num_swapchain_images, sizeof (VkImage));
 	vkGetSwapchainImagesKHR (graphics_device, swapchain, &num_swapchain_images, swapchain_images);
-	swapchain_image_views = (VkImageView*) utils_malloc (sizeof (VkImageView) * num_swapchain_images);
+	swapchain_image_views = (VkImageView*) utils_calloc (num_swapchain_images, sizeof (VkImageView));
 
 	VkImageSubresourceRange subresource_range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 	VkImageViewCreateInfo image_view_create_info = {
@@ -490,7 +498,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	{
 		image_view_create_info.image = swapchain_images[i];
 		res = vkCreateImageView (graphics_device, &image_view_create_info, NULL, swapchain_image_views + i);
-		
+
 		if (res != VK_SUCCESS)
 		{
 			result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
@@ -506,6 +514,58 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	vkGetDeviceQueue (graphics_device, graphics_queue_family_index, graphics_queue_index, &graphics_queue);
 	vkGetDeviceQueue (graphics_device, compute_queue_family_index, compute_queue_index, &compute_queue);
 	vkGetDeviceQueue (graphics_device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
+
+	VkAttachmentDescription color_attachment_description = {
+																0,
+																chosen_surface_format.format,
+																VK_SAMPLE_COUNT_1_BIT,
+																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+																VK_ATTACHMENT_STORE_OP_STORE,
+																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+																VK_IMAGE_LAYOUT_UNDEFINED,
+																VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+														   };
+
+	VkAttachmentReference color_attachment_reference = {
+															0,
+															VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+													   };
+
+	VkSubpassDescription color_subpass_description = {
+															0,
+															VK_PIPELINE_BIND_POINT_GRAPHICS,
+															0,
+															NULL,
+															1,
+															&color_attachment_reference,
+															NULL,
+															NULL,
+															0,
+															NULL
+													 };
+
+	VkRenderPassCreateInfo render_pass_create_info = {
+														VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+														NULL,
+														0,
+														1,
+														&color_attachment_description,
+														1,
+														&color_subpass_description,
+														0,
+														NULL
+													 };
+
+	res = vkCreateRenderPass (graphics_device, &render_pass_create_info, NULL, &render_pass);
+
+	if (res != VK_SUCCESS)
+	{
+		result = AGE_ERROR_GRAPHICS_CREATE_RENDER_PASS;
+		goto exit;
+	}
+
+	VkFramebufferCreateInfo framebuffer_create_info = { 0 };
 
 exit: // clear function specific allocations before exit
 	for (size_t i = 0; i < num_requested_instance_layer; ++i)
@@ -532,7 +592,7 @@ exit: // clear function specific allocations before exit
 	}
 	utils_free (requested_device_extensions);
 
-    return res;
+    return result;
 }
 
 void graphics_exit ()
@@ -555,7 +615,7 @@ void graphics_exit ()
 		vkDestroySwapchainKHR (graphics_device, swapchain, NULL);
 	}
 
-	if (graphics_device = VK_NULL_HANDLE)
+	if (graphics_device != VK_NULL_HANDLE)
 	{
 		vkDestroyDevice (graphics_device, NULL);
 	}

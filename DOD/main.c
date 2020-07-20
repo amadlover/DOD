@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "error.h"
+#include "log.h"
 #include "game.h"
 
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
@@ -88,7 +89,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     AGE_RESULT result = game_init (h_instance, h_wnd);
     if (result != AGE_SUCCESS)
     {
-        printf ("Error %d\n", result);
+        log_error (result);
         goto exit;
         return EXIT_FAILURE;
     }
