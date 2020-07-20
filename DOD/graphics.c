@@ -199,11 +199,11 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
     VkApplicationInfo application_info = {VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL, "Asteroids", VK_MAKE_VERSION (1, 0, 0), "AGE", VK_MAKE_VERSION (1, 0, 0), VK_API_VERSION_1_2};
     VkInstanceCreateInfo instance_create_info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL, 0, &application_info, requested_instance_layer_count, requested_instance_layers, requested_instance_extension_count, requested_instance_extensions};
     
-	AGE_RESULT result = AGE_SUCCESS;
+	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = vkCreateInstance (&instance_create_info, NULL, &instance);
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_INSTANCE;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_INSTANCE;
 		goto exit;
 	}
 
@@ -226,7 +226,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_DEBUG_UTILS_MESSENGER;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_DEBUG_UTILS_MESSENGER;
 		goto exit;
 	}
 
@@ -235,7 +235,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (physical_device_count == 0)
 	{
-		result = AGE_ERROR_GRAPHICS_GET_PHYSICAL_DEVICE;
+		age_result = AGE_ERROR_GRAPHICS_GET_PHYSICAL_DEVICE;
 		goto exit;
 	}
 
@@ -315,7 +315,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_SURFACE;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SURFACE;
 		goto exit;
 	}
 
@@ -324,7 +324,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (!is_surface_supported)
 	{
-		result = AGE_ERROR_GRAPHICS_SURFACE_SUPPORT;
+		age_result = AGE_ERROR_GRAPHICS_SURFACE_SUPPORT;
 		goto exit;
 	}
 
@@ -445,7 +445,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_GRAPHICS_DEVICE;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_GRAPHICS_DEVICE;
 		goto exit;
 	}
 
@@ -474,7 +474,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_SWAPCHAIN;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SWAPCHAIN;
 		goto exit;
 	}
 	
@@ -502,7 +502,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 		if (vk_result != VK_SUCCESS)
 		{
-			result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
+			age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
 			goto exit;
 		}
 	}
@@ -562,7 +562,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_RENDER_PASS;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_RENDER_PASS;
 		goto exit;
 	}
 
@@ -588,7 +588,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 		if (vk_result != VK_SUCCESS)
 		{
-			result = AGE_ERROR_GRAPHICS_CREATE_FRAMEBUFFER;
+			age_result = AGE_ERROR_GRAPHICS_CREATE_FRAMEBUFFER;
 			goto exit;
 		}
 	}
@@ -603,7 +603,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_COMMAND_POOL;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_COMMAND_POOL;
 		goto exit;
 	}
 
@@ -621,7 +621,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_ALLOCATE_COMMAND_BUFFER;
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_COMMAND_BUFFER;
 		goto exit;
 	}
 
@@ -630,7 +630,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (vk_result != VK_SUCCESS)
 	{
-		result = AGE_ERROR_GRAPHICS_CREATE_SEMAPHORE;
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SEMAPHORE;
 		goto exit;
 	}
 
@@ -642,14 +642,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 		if (vk_result != VK_SUCCESS)
 		{
-			result = AGE_ERROR_GRAPHICS_CREATE_SEMAPHORE;
+			age_result = AGE_ERROR_GRAPHICS_CREATE_SEMAPHORE;
 			goto exit;
 		}
 	}
 
-	result = graphics_draw_background ();
+	age_result = graphics_draw_background ();
 
-	if (result != AGE_SUCCESS)
+	if (age_result != AGE_SUCCESS)
 	{
 		goto exit;
 	}
@@ -679,18 +679,14 @@ exit: // clear function specific allocations before exit
 	}
 	utils_free (requested_device_extensions);
 
-    return result;
+    return age_result;
 }
 
 AGE_RESULT graphics_draw_background (void)
 {
-	AGE_RESULT result = AGE_SUCCESS;
+	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 
-	VkClearValue clear_value;
-	VkClearColorValue color_value = { 1,0,1,1 };
-	clear_value.color = color_value;
-	
 	VkCommandBufferBeginInfo command_buffer_begin_info = {
 															VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 															NULL,
@@ -704,8 +700,8 @@ AGE_RESULT graphics_draw_background (void)
 														render_pass,
 														VK_NULL_HANDLE,
 														{ {0,0}, surface_capabilities.currentExtent },
-														1,
-														&clear_value
+														0,
+														NULL
 													};
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
@@ -713,7 +709,7 @@ AGE_RESULT graphics_draw_background (void)
 		vk_result = vkBeginCommandBuffer (swapchain_command_buffers[i], &command_buffer_begin_info);
 		if (vk_result != VK_SUCCESS)
 		{
-			result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
+			age_result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
 			goto exit;
 		}
 		
@@ -725,13 +721,13 @@ AGE_RESULT graphics_draw_background (void)
 		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);
 		if (vk_result != VK_SUCCESS)
 		{
-			result = AGE_ERROR_GRAPHICS_END_COMMAND_BUFFER;
+			age_result = AGE_ERROR_GRAPHICS_END_COMMAND_BUFFER;
 			goto exit;
 		}
 	}
 
 exit: // clear function specific allocations before exit
-	return result;
+	return age_result;
 }
 
 AGE_RESULT graphics_submit_present (void)
