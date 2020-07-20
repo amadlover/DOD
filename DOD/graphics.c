@@ -27,16 +27,17 @@ VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 
 VkImage* swapchain_images = NULL;
 VkImageView* swapchain_image_views = NULL;
-size_t num_swapchain_images = 0;
+size_t swapchain_images_count = 0;
 
 VkQueue graphics_queue = VK_NULL_HANDLE;
 VkQueue compute_queue = VK_NULL_HANDLE;
 VkQueue transfer_queue = VK_NULL_HANDLE;
 
-VkCommandBuffer* swapchain_command_buffers = NULL;
+VkRenderPass render_pass = VK_NULL_HANDLE;
 VkFramebuffer* swapchain_framebuffers = NULL;
 
-VkRenderPass render_pass = VK_NULL_HANDLE;
+VkCommandPool swapchain_command_pool = VK_NULL_HANDLE;
+VkCommandBuffer* swapchain_command_buffers = NULL;
 
 VkSemaphore wait_semaphore = VK_NULL_HANDLE;
 VkSemaphore* swapchain_signal_semaphores = NULL;
@@ -98,19 +99,19 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
     is_validation_needed = false;
 #endif
 	char** requested_instance_layers = NULL;
-	size_t num_requested_instance_layer = 0;
+	size_t requested_instance_layer_count = 0;
 
 	char** requested_instance_extensions = NULL;
-	size_t num_requested_instance_extension = 0;
+	size_t requested_instance_extension_count = 0;
 
     if (is_validation_needed)
     {
-        size_t num_layers = 0;
-        vkEnumerateInstanceLayerProperties (&num_layers, NULL);
-		VkLayerProperties* layer_properties = (VkLayerProperties*)utils_calloc (num_layers, sizeof (VkLayerProperties));
-        vkEnumerateInstanceLayerProperties (&num_layers, layer_properties);
+        size_t layer_count = 0;
+        vkEnumerateInstanceLayerProperties (&layer_count, NULL);
+		VkLayerProperties* layer_properties = (VkLayerProperties*)utils_calloc (layer_count, sizeof (VkLayerProperties));
+        vkEnumerateInstanceLayerProperties (&layer_count, layer_properties);
 
-        for (size_t l = 0; l < num_layers; l++)
+        for (size_t l = 0; l < layer_count; l++)
         {
             if (strcmp (layer_properties[l].layerName, "VK_LAYER_LUNARG_standard_validation") == 0)
             {
@@ -120,12 +121,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
                 }
                 else
                 {
-                    requested_instance_layers = (char**)utils_realloc_zero (requested_instance_layers, sizeof (char*) * num_requested_instance_layer, sizeof (char*) * (num_requested_instance_layer + 1));
+                    requested_instance_layers = (char**)utils_realloc_zero (requested_instance_layers, sizeof (char*) * requested_instance_layer_count, sizeof (char*) * (requested_instance_layer_count + 1));
                 }
 
-                requested_instance_layers[num_requested_instance_layer] = (char*)utils_calloc (strlen ("VK_LAYER_LUNARG_standard_validation") + 1, sizeof (char));
-                strcpy (requested_instance_layers[num_requested_instance_layer], "VK_LAYER_LUNARG_standard_validation");
-                ++num_requested_instance_layer;
+                requested_instance_layers[requested_instance_layer_count] = (char*)utils_calloc (strlen ("VK_LAYER_LUNARG_standard_validation") + 1, sizeof (char));
+                strcpy (requested_instance_layers[requested_instance_layer_count], "VK_LAYER_LUNARG_standard_validation");
+                ++requested_instance_layer_count;
 
                 break;
             }
@@ -134,13 +135,13 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
         utils_free (layer_properties);
     }
 
-	size_t num_extensions = 0;
-	vkEnumerateInstanceExtensionProperties (NULL, &num_extensions, NULL);
+	size_t extension_count = 0;
+	vkEnumerateInstanceExtensionProperties (NULL, &extension_count, NULL);
 
-	VkExtensionProperties* extension_properties = (VkExtensionProperties*)utils_calloc (num_extensions, sizeof (VkExtensionProperties));
-	vkEnumerateInstanceExtensionProperties (NULL, &num_extensions, extension_properties);
+	VkExtensionProperties* extension_properties = (VkExtensionProperties*)utils_calloc (extension_count, sizeof (VkExtensionProperties));
+	vkEnumerateInstanceExtensionProperties (NULL, &extension_count, extension_properties);
 
-	for (size_t e = 0; e < num_extensions; e++)
+	for (size_t e = 0; e < extension_count; e++)
 	{
 		if (strcmp (extension_properties[e].extensionName, VK_KHR_SURFACE_EXTENSION_NAME) == 0)
 		{
@@ -150,12 +151,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 			}
 			else
 			{
-				requested_instance_extensions = (char**)utils_realloc_zero (requested_instance_extensions, sizeof (char*) * num_requested_instance_extension, sizeof (char*) * (num_requested_instance_extension + 1));
+				requested_instance_extensions = (char**)utils_realloc_zero (requested_instance_extensions, sizeof (char*) * requested_instance_extension_count, sizeof (char*) * (requested_instance_extension_count + 1));
 			}
 
-			requested_instance_extensions[num_requested_instance_extension] = (char*)utils_calloc (strlen (VK_KHR_SURFACE_EXTENSION_NAME) + 1, sizeof (char));
-			strcpy (requested_instance_extensions[num_requested_instance_extension], VK_KHR_SURFACE_EXTENSION_NAME);
-			++num_requested_instance_extension;
+			requested_instance_extensions[requested_instance_extension_count] = (char*)utils_calloc (strlen (VK_KHR_SURFACE_EXTENSION_NAME) + 1, sizeof (char));
+			strcpy (requested_instance_extensions[requested_instance_extension_count], VK_KHR_SURFACE_EXTENSION_NAME);
+			++requested_instance_extension_count;
 		}
 		else if (strcmp (extension_properties[e].extensionName, "VK_KHR_win32_surface") == 0)
 		{
@@ -165,12 +166,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 			}
 			else
 			{
-				requested_instance_extensions = (char**)utils_realloc_zero (requested_instance_extensions, sizeof (char*) * num_requested_instance_extension, sizeof (char*) * (num_requested_instance_extension + 1));
+				requested_instance_extensions = (char**)utils_realloc_zero (requested_instance_extensions, sizeof (char*) * requested_instance_extension_count, sizeof (char*) * (requested_instance_extension_count + 1));
 			}
 
-			requested_instance_extensions[num_requested_instance_extension] = (char*)utils_calloc (strlen ("VK_KHR_win32_surface") + 1, sizeof (char));
-			strcpy (requested_instance_extensions[num_requested_instance_extension], "VK_KHR_win32_surface");
-			++num_requested_instance_extension;
+			requested_instance_extensions[requested_instance_extension_count] = (char*)utils_calloc (strlen ("VK_KHR_win32_surface") + 1, sizeof (char));
+			strcpy (requested_instance_extensions[requested_instance_extension_count], "VK_KHR_win32_surface");
+			++requested_instance_extension_count;
 		}
 
 		if (is_validation_needed)
@@ -183,12 +184,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 				}
 				else
 				{
-					requested_instance_extensions = (char**)utils_realloc_zero (requested_instance_extensions, sizeof (char*) * num_requested_instance_extension, sizeof (char*) * (num_requested_instance_extension + 1));
+					requested_instance_extensions = (char**)utils_realloc_zero (requested_instance_extensions, sizeof (char*) * requested_instance_extension_count, sizeof (char*) * (requested_instance_extension_count + 1));
 				}
 
-				requested_instance_extensions[num_requested_instance_extension] = (char*)utils_calloc (strlen (VK_EXT_DEBUG_UTILS_EXTENSION_NAME) + 1, sizeof (char));
-				strcpy (requested_instance_extensions[num_requested_instance_extension], VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-				++num_requested_instance_extension;
+				requested_instance_extensions[requested_instance_extension_count] = (char*)utils_calloc (strlen (VK_EXT_DEBUG_UTILS_EXTENSION_NAME) + 1, sizeof (char));
+				strcpy (requested_instance_extensions[requested_instance_extension_count], VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+				++requested_instance_extension_count;
 			}
 		}
 	}
@@ -196,11 +197,11 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	utils_free (extension_properties);
 
     VkApplicationInfo application_info = {VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL, "Asteroids", VK_MAKE_VERSION (1, 0, 0), "AGE", VK_MAKE_VERSION (1, 0, 0), VK_API_VERSION_1_2};
-    VkInstanceCreateInfo instance_create_info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL, 0, &application_info, num_requested_instance_layer, requested_instance_layers, num_requested_instance_extension, requested_instance_extensions};
+    VkInstanceCreateInfo instance_create_info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL, 0, &application_info, requested_instance_layer_count, requested_instance_layers, requested_instance_extension_count, requested_instance_extensions};
     
 	AGE_RESULT result = AGE_SUCCESS;
-	VkResult res = vkCreateInstance (&instance_create_info, NULL, &instance);
-	if (res != VK_SUCCESS)
+	VkResult vk_result = vkCreateInstance (&instance_create_info, NULL, &instance);
+	if (vk_result != VK_SUCCESS)
 	{
 		result = AGE_ERROR_GRAPHICS_CREATE_INSTANCE;
 		goto exit;
@@ -221,37 +222,37 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 																				NULL
 																			};
 
-	res = create_debug_utils_messenger (instance, &debug_utils_messenger_create_info, NULL, &debug_utils_messenger);
+	vk_result = create_debug_utils_messenger (instance, &debug_utils_messenger_create_info, NULL, &debug_utils_messenger);
 
-	if (res != VK_SUCCESS)
+	if (vk_result != VK_SUCCESS)
 	{
 		result = AGE_ERROR_GRAPHICS_CREATE_DEBUG_UTILS_MESSENGER;
 		goto exit;
 	}
 
-	size_t num_physical_devices = 0;
-	vkEnumeratePhysicalDevices (instance, &num_physical_devices, NULL);
+	size_t physical_device_count = 0;
+	vkEnumeratePhysicalDevices (instance, &physical_device_count, NULL);
 
-	if (num_physical_devices == 0)
+	if (physical_device_count == 0)
 	{
 		result = AGE_ERROR_GRAPHICS_GET_PHYSICAL_DEVICE;
 		goto exit;
 	}
 
-	VkPhysicalDevice* physical_devices = (VkPhysicalDevice*) utils_calloc (num_physical_devices, sizeof (VkPhysicalDevice));
-	vkEnumeratePhysicalDevices (instance, &num_physical_devices, physical_devices);
+	VkPhysicalDevice* physical_devices = (VkPhysicalDevice*) utils_calloc (physical_device_count, sizeof (VkPhysicalDevice));
+	vkEnumeratePhysicalDevices (instance, &physical_device_count, physical_devices);
 
 	physical_device = physical_devices[0];
 
 	VkPhysicalDeviceFeatures device_features;
 	vkGetPhysicalDeviceFeatures (physical_device, &device_features);
 
-	size_t num_queue_families = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties (physical_device, &num_queue_families, NULL);
-	VkQueueFamilyProperties* queue_family_properties = (VkQueueFamilyProperties*)utils_calloc (num_queue_families, sizeof (VkQueueFamilyProperties));
-	vkGetPhysicalDeviceQueueFamilyProperties (physical_device, &num_queue_families, queue_family_properties);
+	size_t queue_family_count = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties (physical_device, &queue_family_count, NULL);
+	VkQueueFamilyProperties* queue_family_properties = (VkQueueFamilyProperties*)utils_calloc (queue_family_count, sizeof (VkQueueFamilyProperties));
+	vkGetPhysicalDeviceQueueFamilyProperties (physical_device, &queue_family_count, queue_family_properties);
 
-	for (size_t i = 0; i < num_queue_families; ++i)
+	for (size_t i = 0; i < queue_family_count; ++i)
 	{
 		if (queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
@@ -260,7 +261,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 		}
 	}
 
-	for (size_t i = 0; i < num_queue_families; ++i)
+	for (size_t i = 0; i < queue_family_count; ++i)
 	{
 		if (queue_family_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT && (i != graphics_queue_family_index))
 		{
@@ -271,7 +272,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (compute_queue_family_index == -1)
 	{
-		for (size_t i = 0; i < num_queue_families; ++i)
+		for (size_t i = 0; i < queue_family_count; ++i)
 		{
 			if (queue_family_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
 			{
@@ -281,7 +282,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 		}	
 	}
 
-	for (size_t i = 0; i < num_queue_families; ++i)
+	for (size_t i = 0; i < queue_family_count; ++i)
 	{
 		if (queue_family_properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT && (i != graphics_queue_family_index) && (i != compute_queue_family_index))
 		{
@@ -292,7 +293,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	if (transfer_queue_family_index == -1)
 	{
-		for (size_t i = 0; i < num_queue_families; ++i)
+		for (size_t i = 0; i < queue_family_count; ++i)
 		{
 			if (queue_family_properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
 			{
@@ -310,9 +311,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	VkWin32SurfaceCreateInfoKHR surface_create_info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, NULL, 0, h_instance, h_wnd};
 
-	res = vkCreateWin32SurfaceKHR (instance, &surface_create_info, NULL, &surface);
+	vk_result = vkCreateWin32SurfaceKHR (instance, &surface_create_info, NULL, &surface);
 
-	if (res != VK_SUCCESS)
+	if (vk_result != VK_SUCCESS)
 	{
 		result = AGE_ERROR_GRAPHICS_CREATE_SURFACE;
 		goto exit;
@@ -329,13 +330,13 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR (physical_device, surface, &surface_capabilities);
 
-	size_t num_surface_formats = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &num_surface_formats, NULL);
+	size_t surface_format_count = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &surface_format_count, NULL);
 
-	VkSurfaceFormatKHR* surface_formats = (VkSurfaceFormatKHR*)utils_calloc (num_surface_formats, sizeof (VkSurfaceFormatKHR));
-	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &num_surface_formats, surface_formats);
+	VkSurfaceFormatKHR* surface_formats = (VkSurfaceFormatKHR*)utils_calloc (surface_format_count, sizeof (VkSurfaceFormatKHR));
+	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &surface_format_count, surface_formats);
 
-	for (size_t s = 0; s < num_surface_formats; s++)
+	for (size_t s = 0; s < surface_format_count; s++)
 	{
 		if (surface_formats[s].format == VK_FORMAT_B8G8R8A8_UNORM)
 		{
@@ -344,13 +345,13 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 		}
 	}
 
-	size_t num_present_modes = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR (physical_device, surface, &num_present_modes, NULL);
+	size_t present_mode_count = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR (physical_device, surface, &present_mode_count, NULL);
 
-	VkPresentModeKHR* present_modes = (VkPresentModeKHR*)utils_calloc (num_present_modes, sizeof (VkPresentModeKHR));
-	vkGetPhysicalDeviceSurfacePresentModesKHR (physical_device, surface, &num_present_modes, present_modes);
+	VkPresentModeKHR* present_modes = (VkPresentModeKHR*)utils_calloc (present_mode_count, sizeof (VkPresentModeKHR));
+	vkGetPhysicalDeviceSurfacePresentModesKHR (physical_device, surface, &present_mode_count, present_modes);
 
-	for (size_t p = 0; p < num_present_modes; p++)
+	for (size_t p = 0; p < present_mode_count; p++)
 	{
 		if (present_modes[p] == VK_PRESENT_MODE_MAILBOX_KHR)
 		{
@@ -360,15 +361,15 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 	}
 
 	char** requested_device_extensions = NULL;
-	size_t num_requested_device_extension = 0;
+	size_t requested_device_extension_count = 0;
 
-	num_extensions = 0;
-	vkEnumerateDeviceExtensionProperties (physical_device, NULL, &num_extensions, NULL);
+	extension_count = 0;
+	vkEnumerateDeviceExtensionProperties (physical_device, NULL, &extension_count, NULL);
 
-	extension_properties = (VkExtensionProperties*)utils_calloc (num_extensions, sizeof (VkExtensionProperties));
-	vkEnumerateDeviceExtensionProperties (physical_device, NULL, &num_extensions, extension_properties);
+	extension_properties = (VkExtensionProperties*)utils_calloc (extension_count, sizeof (VkExtensionProperties));
+	vkEnumerateDeviceExtensionProperties (physical_device, NULL, &extension_count, extension_properties);
 
-	for (size_t e = 0; e < num_extensions; e++)
+	for (size_t e = 0; e < extension_count; e++)
 	{
 		if (strcmp (extension_properties[e].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0)
 		{
@@ -378,12 +379,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 			}
 			else
 			{
-				requested_device_extensions = (char**)utils_realloc_zero (requested_device_extensions, sizeof (char*) * num_requested_device_extension, sizeof (char*) * (num_requested_device_extension + 1));
+				requested_device_extensions = (char**)utils_realloc_zero (requested_device_extensions, sizeof (char*) * requested_device_extension_count, sizeof (char*) * (requested_device_extension_count + 1));
 			}
 
-			requested_device_extensions[num_requested_device_extension] = (char*)utils_calloc (strlen (VK_KHR_SWAPCHAIN_EXTENSION_NAME) + 1, sizeof (char));
-			strcpy (requested_device_extensions[num_requested_device_extension], VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-			++num_requested_device_extension;
+			requested_device_extensions[requested_device_extension_count] = (char*)utils_calloc (strlen (VK_KHR_SWAPCHAIN_EXTENSION_NAME) + 1, sizeof (char));
+			strcpy (requested_device_extensions[requested_device_extension_count], VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+			++requested_device_extension_count;
 
 			break;
 		}
@@ -395,34 +396,34 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	VkDeviceQueueCreateInfo queue_create_infos[3] = { 0,0,0 };
 	size_t unique_queue_family_indices[3] = { 0,0,0 };
-	size_t num_unique_queues[3] = { 1,1,1 };
-	size_t num_unique_queue_family_indices = 0;
+	size_t unique_queue_count[3] = { 1,1,1 };
+	size_t unique_queue_family_index_count = 0;
 
 	if (graphics_queue_family_index == compute_queue_family_index)
 	{
 		unique_queue_family_indices[0] = graphics_queue_family_index;
-		++num_unique_queue_family_indices;
-		++num_unique_queues[0];
+		++unique_queue_family_index_count;
+		++unique_queue_count[0];
 	}
 	else
 	{
 		unique_queue_family_indices[0] = graphics_queue_family_index;
 		unique_queue_family_indices[1] = compute_queue_family_index;
-		num_unique_queue_family_indices += 2;
+		unique_queue_family_index_count += 2;
 	}
 
 	if (graphics_queue_family_index != transfer_queue_family_index)
 	{
-		unique_queue_family_indices[num_unique_queue_family_indices] = transfer_queue_family_index;
-		++num_unique_queue_family_indices;
+		unique_queue_family_indices[unique_queue_family_index_count] = transfer_queue_family_index;
+		++unique_queue_family_index_count;
 	}
 
-	for (size_t ui = 0; ui < num_unique_queue_family_indices; ++ui)
+	for (size_t ui = 0; ui < unique_queue_family_index_count; ++ui)
 	{
 		queue_create_infos[ui].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queue_create_infos[ui].pNext = NULL;
 		queue_create_infos[ui].pQueuePriorities = &priorities;
-		queue_create_infos[ui].queueCount = num_unique_queues[ui];
+		queue_create_infos[ui].queueCount = unique_queue_count[ui];
 		queue_create_infos[ui].queueFamilyIndex = unique_queue_family_indices[ui];
 		queue_create_infos[ui].flags = 0;
 	}
@@ -431,18 +432,18 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 												VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, 
 												NULL, 
 												0, 
-												num_unique_queue_family_indices, 
+												unique_queue_family_index_count, 
 												queue_create_infos, 
 												0,
 												NULL,
-												num_requested_device_extension,
+												requested_device_extension_count,
 												requested_device_extensions,
 												&device_features
 											};
 	
-	res = vkCreateDevice (physical_device, &device_create_info, NULL, &graphics_device);
+	vk_result = vkCreateDevice (physical_device, &device_create_info, NULL, &graphics_device);
 
-	if (res != VK_SUCCESS)
+	if (vk_result != VK_SUCCESS)
 	{
 		result = AGE_ERROR_GRAPHICS_CREATE_GRAPHICS_DEVICE;
 		goto exit;
@@ -469,18 +470,18 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 															VK_NULL_HANDLE
 													 };
 	
-	res = vkCreateSwapchainKHR (graphics_device, &swapchain_create_info, NULL, &swapchain);
+	vk_result = vkCreateSwapchainKHR (graphics_device, &swapchain_create_info, NULL, &swapchain);
 
-	if (res != VK_SUCCESS)
+	if (vk_result != VK_SUCCESS)
 	{
 		result = AGE_ERROR_GRAPHICS_CREATE_SWAPCHAIN;
 		goto exit;
 	}
 	
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &num_swapchain_images, NULL);
-	swapchain_images = (VkImage*) utils_calloc (num_swapchain_images, sizeof (VkImage));
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &num_swapchain_images, swapchain_images);
-	swapchain_image_views = (VkImageView*) utils_calloc (num_swapchain_images, sizeof (VkImageView));
+	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, NULL);
+	swapchain_images = (VkImage*) utils_calloc (swapchain_images_count, sizeof (VkImage));
+	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, swapchain_images);
+	swapchain_image_views = (VkImageView*) utils_calloc (swapchain_images_count, sizeof (VkImageView));
 
 	VkImageSubresourceRange subresource_range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 	VkImageViewCreateInfo image_view_create_info = {
@@ -494,12 +495,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 														subresource_range
 												   };
 	
-	for (size_t i = 0; i < num_swapchain_images; ++i)
+	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
 		image_view_create_info.image = swapchain_images[i];
-		res = vkCreateImageView (graphics_device, &image_view_create_info, NULL, swapchain_image_views + i);
+		vk_result = vkCreateImageView (graphics_device, &image_view_create_info, NULL, swapchain_image_views + i);
 
-		if (res != VK_SUCCESS)
+		if (vk_result != VK_SUCCESS)
 		{
 			result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
 			goto exit;
@@ -557,24 +558,110 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 														NULL
 													 };
 
-	res = vkCreateRenderPass (graphics_device, &render_pass_create_info, NULL, &render_pass);
+	vk_result = vkCreateRenderPass (graphics_device, &render_pass_create_info, NULL, &render_pass);
 
-	if (res != VK_SUCCESS)
+	if (vk_result != VK_SUCCESS)
 	{
 		result = AGE_ERROR_GRAPHICS_CREATE_RENDER_PASS;
 		goto exit;
 	}
 
-	VkFramebufferCreateInfo framebuffer_create_info = { 0 };
+	swapchain_framebuffers = (VkFramebuffer*)utils_calloc (swapchain_images_count, sizeof (VkFramebuffer));
+
+	VkFramebufferCreateInfo framebuffer_create_info = {
+															VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+															NULL,
+															0,
+															render_pass,
+															1,
+															NULL,
+															surface_capabilities.currentExtent.width,
+															surface_capabilities.currentExtent.height,
+															1
+													  };
+
+	for (size_t i = 0; i < swapchain_images_count; ++i)
+	{
+		framebuffer_create_info.pAttachments = swapchain_images + i;
+		
+		vk_result = vkCreateFramebuffer (graphics_device, &framebuffer_create_info, NULL, swapchain_framebuffers + i);
+
+		if (vk_result != VK_SUCCESS)
+		{
+			result = AGE_ERROR_GRAPHICS_CREATE_FRAMEBUFFER;
+			goto exit;
+		}
+	}
+
+	VkCommandPoolCreateInfo command_pool_create_info = {
+															VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+															NULL,
+															VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+													   };
+
+	vk_result = vkCreateCommandPool (graphics_device, &command_pool_create_info, NULL, &swapchain_command_pool);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		result = AGE_ERROR_GRAPHICS_CREATE_COMMAND_POOL;
+		goto exit;
+	}
+
+	swapchain_command_buffers = (VkCommandBuffer*)utils_calloc (swapchain_images_count, sizeof (VkCommandBuffer));
+
+	VkCommandBufferAllocateInfo command_buffer_allocate_info = {
+																	VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+																	NULL,
+																	swapchain_command_pool,
+																	VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+																	swapchain_images_count
+															   };
+
+	vk_result = vkAllocateCommandBuffers (graphics_device, &command_buffer_allocate_info, swapchain_command_buffers);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		result = AGE_ERROR_GRAPHICS_ALLOCATE_COMMAND_BUFFER;
+		goto exit;
+	}
+
+	VkSemaphoreCreateInfo semaphore_create_info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, NULL, 0 };
+	vk_result = vkCreateSemaphore (graphics_device, &semaphore_create_info, NULL, &wait_semaphore);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		result = AGE_ERROR_GRAPHICS_CREATE_SEMAPHORE;
+		goto exit;
+	}
+
+	swapchain_signal_semaphores = (VkSemaphore*)utils_calloc (swapchain_images_count, sizeof (VkSemaphore));
+
+	for (size_t i = 0; i < swapchain_images_count; ++i)
+	{
+		vk_result = vkCreateSemaphore (graphics_device, &semaphore_create_info, NULL, swapchain_signal_semaphores + i);
+
+		if (vk_result != VK_SUCCESS)
+		{
+			result = AGE_ERROR_GRAPHICS_CREATE_SEMAPHORE;
+			goto exit;
+		}
+	}
+
+	result = graphics_draw_background ();
+
+	if (result != AGE_SUCCESS)
+	{
+		goto exit;
+	}
 
 exit: // clear function specific allocations before exit
-	for (size_t i = 0; i < num_requested_instance_layer; ++i)
+	for (size_t i = 0; i < requested_instance_layer_count; ++i)
 	{
 		utils_free (requested_instance_layers[i]);
 	}
 	utils_free (requested_instance_layers);
 
-	for (size_t i = 0; i < num_requested_instance_extension; ++i)
+	for (size_t i = 0; i < requested_instance_extension_count; ++i)
 	{
 		utils_free (requested_instance_extensions[i]);
 	}
@@ -586,7 +673,7 @@ exit: // clear function specific allocations before exit
 	utils_free (surface_formats);
 	utils_free (present_modes);
 
-	for (size_t i = 0; i < num_requested_device_extension; ++i)
+	for (size_t i = 0; i < requested_device_extension_count; ++i)
 	{
 		utils_free (requested_device_extensions[i]);
 	}
@@ -595,11 +682,174 @@ exit: // clear function specific allocations before exit
     return result;
 }
 
+AGE_RESULT graphics_draw_background (void)
+{
+	AGE_RESULT result = AGE_SUCCESS;
+	VkResult vk_result = VK_SUCCESS;
+
+	VkClearValue clear_value;
+	VkClearColorValue color_value = { 1,0,1,1 };
+	clear_value.color = color_value;
+	
+	VkCommandBufferBeginInfo command_buffer_begin_info = {
+															VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+															NULL,
+															VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+															NULL
+	};
+
+	VkRenderPassBeginInfo render_pass_begin_info = {
+														VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+														NULL,
+														render_pass,
+														VK_NULL_HANDLE,
+														{ {0,0}, surface_capabilities.currentExtent },
+														1,
+														&clear_value
+													};
+
+	for (size_t i = 0; i < swapchain_images_count; ++i)
+	{
+		vk_result = vkBeginCommandBuffer (swapchain_command_buffers[i], &command_buffer_begin_info);
+		if (vk_result != VK_SUCCESS)
+		{
+			result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
+			goto exit;
+		}
+		
+		render_pass_begin_info.framebuffer = swapchain_framebuffers[i];
+
+		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdEndRenderPass (swapchain_command_buffers[i]);
+
+		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);
+		if (vk_result != VK_SUCCESS)
+		{
+			result = AGE_ERROR_GRAPHICS_END_COMMAND_BUFFER;
+			goto exit;
+		}
+	}
+
+exit: // clear function specific allocations before exit
+	return result;
+}
+
+AGE_RESULT graphics_submit_present (void)
+{
+	AGE_RESULT age_result = AGE_SUCCESS;
+
+	size_t image_index = 0;
+	VkResult vk_result = vkAcquireNextImageKHR (graphics_device, swapchain, UINT64_MAX, wait_semaphore, VK_NULL_HANDLE, &image_index);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		if (vk_result == VK_SUBOPTIMAL_KHR || vk_result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			age_result = AGE_SUCCESS;
+			goto exit;
+		}
+		else
+		{
+			vk_result = AGE_ERROR_GRAPHICS_ACQUIRE_NEXT_IMAGE;
+			goto exit;
+		}
+	}
+
+	VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+	VkSubmitInfo submit_info = {
+									VK_STRUCTURE_TYPE_SUBMIT_INFO,
+									NULL,
+									1,
+									&wait_semaphore,
+									&wait_stage_mask,
+									1,
+									swapchain_command_buffers + image_index,
+									1,
+									swapchain_signal_semaphores + image_index,
+							   };
+
+	vk_result = vkQueueSubmit (graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_QUEUE_SUBMIT;
+		goto exit;
+	}
+
+	VkPresentInfoKHR present_info = {
+										VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+										NULL,
+										1,
+										swapchain_signal_semaphores + image_index,
+										1,
+										&swapchain,
+										&image_index,
+										NULL
+									};
+
+	vk_result = vkQueuePresentKHR (graphics_queue, &present_info);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		if (vk_result == VK_ERROR_OUT_OF_HOST_MEMORY || vk_result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+		{
+			age_result = AGE_ERROR_GRAPHICS_QUEUE_PRESENT;
+			goto exit;
+		}
+	}
+
+exit:
+	return age_result;
+}
+
 void graphics_exit ()
 {
+	vkQueueWaitIdle (graphics_queue);
+
+	if (wait_semaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore (graphics_device, wait_semaphore, NULL);
+	}
+
+	if (swapchain_signal_semaphores)
+	{
+		for (size_t i = 0; i < swapchain_images_count; ++i)
+		{
+			vkDestroySemaphore (graphics_device, swapchain_signal_semaphores[i], NULL);
+		}
+		
+		utils_free (swapchain_signal_semaphores);
+	}
+
+	if (swapchain_command_buffers)
+	{
+		vkFreeCommandBuffers (graphics_device, swapchain_command_pool, swapchain_images_count, swapchain_command_buffers);
+
+		utils_free (swapchain_command_buffers);
+	}
+
+	if (swapchain_command_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool (graphics_device, swapchain_command_pool, NULL);
+	}
+
+	if (swapchain_framebuffers)
+	{
+		for (size_t i = 0; i < swapchain_images_count; ++i)
+		{
+			if (swapchain_framebuffers[i] != VK_NULL_HANDLE)
+			{
+				vkDestroyFramebuffer (graphics_device, swapchain_framebuffers[i], NULL);
+			}
+		}
+
+		utils_free (swapchain_framebuffers);
+	}
+
 	if (swapchain_image_views)
 	{
-		for (size_t i = 0; i < num_swapchain_images; i++)
+		for (size_t i = 0; i < swapchain_images_count; ++i)
 		{
 			if (swapchain_image_views[i] != VK_NULL_HANDLE)
 			{

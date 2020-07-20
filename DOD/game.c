@@ -26,12 +26,19 @@ typedef struct vec2_
     float y;
 } vec2;
 
+typedef struct vec3_
+{
+    float x;
+    float y;
+    float z;
+} vec3;
+
 vec2* actors_positions = NULL; // x,y positions clamped between -100 and +100
 vec2* actors_directions = NULL; // x,y normalized vectors
 vec2* actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 
 size_t memory_reserved_for_actors = 0;
-size_t num_actors = 0;
+size_t actor_count = 0;
 
 void game_reserve_memory_for_actors (size_t actors_to_reserve)
 {
@@ -60,7 +67,7 @@ exit:  // place to clean up local allocations
 
 void game_add_actor (size_t x, size_t y)
 {
-    if (num_actors == memory_reserved_for_actors)
+    if (actor_count == memory_reserved_for_actors)
     {
         memory_reserved_for_actors += 5;
         
@@ -97,18 +104,18 @@ void game_add_actor (size_t x, size_t y)
         }
     }
     
-    actors_positions[num_actors].x = ((float)x / (float)640) * 200.f - 100.f;
-    actors_positions[num_actors].y = ((float)y / (float)480) * 200.f - 100.f;
+    actors_positions[actor_count].x = ((float)x / (float)640) * 200.f - 100.f;
+    actors_positions[actor_count].y = ((float)y / (float)480) * 200.f - 100.f;
 
-    actors_directions[num_actors].x = (float)rand () / (float)RAND_MAX;
-    actors_directions[num_actors].y = (float)rand () / (float)RAND_MAX;
+    actors_directions[actor_count].x = (float)rand () / (float)RAND_MAX;
+    actors_directions[actor_count].y = (float)rand () / (float)RAND_MAX;
     
-    actors_rotations[num_actors].x = (float)rand () / (float)RAND_MAX * 360.f;
-    actors_rotations[num_actors].y = (float)rand () / (float)RAND_MAX * 10.f;
+    actors_rotations[actor_count].x = (float)rand () / (float)RAND_MAX * 360.f;
+    actors_rotations[actor_count].y = (float)rand () / (float)RAND_MAX * 10.f;
 
-    ++num_actors;
+    ++actor_count;
 
-    for (size_t n = 0; n < num_actors; ++n)
+    for (size_t n = 0; n < actor_count; ++n)
     {
         printf ("Positions n = %d, x = %f, y = %f\n", n, actors_positions[n].x, actors_positions[n].y);
         printf ("Directions n = %d, x = %f, y = %f\n", n, actors_directions[n].x, actors_directions[n].y);
@@ -121,6 +128,8 @@ void game_process_left_mouse_click (size_t x, size_t y)
     printf ("Left click at %d %d\n", x, y);
    
     game_add_actor (x, y);
+
+    // update graphics command buffers
 }
 
 void game_process_right_mouse_click (size_t x, size_t y)
@@ -130,12 +139,14 @@ void game_process_right_mouse_click (size_t x, size_t y)
 
 void game_update ()
 {
-    // update the positions and rotations of the actors based on the positional speed and rotational speed
+    // update the positions and rotations of the actors based on the positional speed and rotational speed respectively
     
-    for (size_t n = 0; n < num_actors; ++n)
+    for (size_t n = 0; n < actor_count; ++n)
     {
         actors_rotations[n].x += actors_rotations[n].y;
     }
+
+    graphics_submit_present ();
 }
 
 void game_exit ()
