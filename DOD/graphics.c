@@ -523,7 +523,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 																VK_ATTACHMENT_STORE_OP_STORE,
 																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+																VK_ATTACHMENT_STORE_OP_DONT_CARE,
 																VK_IMAGE_LAYOUT_UNDEFINED,
 																VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 														   };
@@ -582,7 +582,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
-		framebuffer_create_info.pAttachments = swapchain_images + i;
+		framebuffer_create_info.pAttachments = swapchain_image_views + i;
 		
 		vk_result = vkCreateFramebuffer (graphics_device, &framebuffer_create_info, NULL, swapchain_framebuffers + i);
 
@@ -832,6 +832,11 @@ void graphics_exit ()
 	if (swapchain_command_pool != VK_NULL_HANDLE)
 	{
 		vkDestroyCommandPool (graphics_device, swapchain_command_pool, NULL);
+	}
+
+	if (render_pass != VK_NULL_HANDLE)
+	{
+		vkDestroyRenderPass (graphics_device, render_pass, NULL);
 	}
 
 	if (swapchain_framebuffers)
