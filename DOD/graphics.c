@@ -21,7 +21,7 @@ VkPhysicalDeviceLimits physical_device_limits = {0};
 VkSurfaceKHR surface = VK_NULL_HANDLE;
 VkSurfaceCapabilitiesKHR surface_capabilities = {0};
 VkSurfaceFormatKHR chosen_surface_format = {0};
-VkPresentModeKHR chosen_present_mode = VK_NULL_HANDLE;
+VkPresentModeKHR chosen_present_mode = -1;
 VkDevice graphics_device = VK_NULL_HANDLE;
 VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 
@@ -41,6 +41,7 @@ VkCommandBuffer* swapchain_command_buffers = NULL;
 
 VkSemaphore wait_semaphore = VK_NULL_HANDLE;
 VkSemaphore* swapchain_signal_semaphores = NULL;
+VkFence* swapchain_fences = NULL;
 
 VkBuffer vertex_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory vertex_index_memory = VK_NULL_HANDLE;
@@ -225,18 +226,18 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkDebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info = {
-																				VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-																				NULL,
-																				0,
-																				/*VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |*/
-																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-																				VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-																				VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-																				VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
-																				debug_messenger_callback,
-																				NULL
+		VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+		NULL,
+		0,
+		/*VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |*/
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+		VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
+		debug_messenger_callback,
+		NULL
 	};
 
 	vk_result = create_debug_utils_messenger (instance, &debug_utils_messenger_create_info, NULL, &debug_utils_messenger);
@@ -377,6 +378,11 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		}
 	}
 
+	if (chosen_present_mode == -1)
+	{
+		chosen_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+	}
+
 	char** requested_device_extensions = NULL;
 	size_t requested_device_extension_count = 0;
 
@@ -446,16 +452,16 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkDeviceCreateInfo device_create_info = {
-												VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-												NULL,
-												0,
-												unique_queue_family_index_count,
-												queue_create_infos,
-												0,
-												NULL,
-												requested_device_extension_count,
-												requested_device_extensions,
-												&device_features
+		VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		NULL,
+		0,
+		unique_queue_family_index_count,
+		queue_create_infos,
+		0,
+		NULL,
+		requested_device_extension_count,
+		requested_device_extensions,
+		&device_features
 	};
 
 	vk_result = vkCreateDevice (physical_device, &device_create_info, NULL, &graphics_device);
@@ -467,24 +473,24 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkSwapchainCreateInfoKHR swapchain_create_info = {
-															VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-															NULL,
-															0,
-															surface,
-															surface_capabilities.minImageCount + 1,
-															chosen_surface_format.format,
-															chosen_surface_format.colorSpace,
-															surface_capabilities.currentExtent,
-															1,
-															surface_capabilities.supportedUsageFlags,
-															VK_SHARING_MODE_EXCLUSIVE,
-															0,
-															NULL,
-															surface_capabilities.currentTransform,
-															VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-															chosen_present_mode,
-															1,
-															VK_NULL_HANDLE
+		VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+		NULL,
+		0,
+		surface,
+		surface_capabilities.minImageCount + 1,
+		chosen_surface_format.format,
+		chosen_surface_format.colorSpace,
+		surface_capabilities.currentExtent,
+		1,
+		surface_capabilities.supportedUsageFlags,
+		VK_SHARING_MODE_EXCLUSIVE,
+		0,
+		NULL,
+		surface_capabilities.currentTransform,
+		VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+		chosen_present_mode,
+		1,
+		VK_NULL_HANDLE
 	};
 
 	vk_result = vkCreateSwapchainKHR (graphics_device, &swapchain_create_info, NULL, &swapchain);
@@ -502,14 +508,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	VkImageSubresourceRange subresource_range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 	VkImageViewCreateInfo image_view_create_info = {
-														VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-														NULL,
-														0,
-														VK_NULL_HANDLE,
-														VK_IMAGE_VIEW_TYPE_2D,
-														chosen_surface_format.format,
-														{0},
-														subresource_range
+		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		NULL,
+		0,
+		VK_NULL_HANDLE,
+		VK_IMAGE_VIEW_TYPE_2D,
+		chosen_surface_format.format,
+		{0},
+		subresource_range
 	};
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
@@ -534,45 +540,45 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	vkGetDeviceQueue (graphics_device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
 
 	VkAttachmentDescription color_attachment_description = {
-																0,
-																chosen_surface_format.format,
-																VK_SAMPLE_COUNT_1_BIT,
-																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-																VK_ATTACHMENT_STORE_OP_STORE,
-																VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-																VK_ATTACHMENT_STORE_OP_DONT_CARE,
-																VK_IMAGE_LAYOUT_UNDEFINED,
-																VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		0,
+		chosen_surface_format.format,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		VK_ATTACHMENT_STORE_OP_STORE,
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 
 	VkAttachmentReference color_attachment_reference = {
-															0,
-															VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		0,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	};
 
 	VkSubpassDescription color_subpass_description = {
-															0,
-															VK_PIPELINE_BIND_POINT_GRAPHICS,
-															0,
-															NULL,
-															1,
-															&color_attachment_reference,
-															NULL,
-															NULL,
-															0,
-															NULL
+		0,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		0,
+		NULL,
+		1,
+		&color_attachment_reference,
+		NULL,
+		NULL,
+		0,
+		NULL
 	};
 
 	VkRenderPassCreateInfo render_pass_create_info = {
-														VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-														NULL,
-														0,
-														1,
-														&color_attachment_description,
-														1,
-														&color_subpass_description,
-														0,
-														NULL
+		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		NULL,
+		0,
+		1,
+		&color_attachment_description,
+		1,
+		&color_subpass_description,
+		0,
+		NULL
 	};
 
 	vk_result = vkCreateRenderPass (graphics_device, &render_pass_create_info, NULL, &render_pass);
@@ -586,15 +592,15 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	swapchain_framebuffers = (VkFramebuffer*)utils_calloc (swapchain_images_count, sizeof (VkFramebuffer));
 
 	VkFramebufferCreateInfo framebuffer_create_info = {
-															VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-															NULL,
-															0,
-															render_pass,
-															1,
-															NULL,
-															surface_capabilities.currentExtent.width,
-															surface_capabilities.currentExtent.height,
-															1
+		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+		NULL,
+		0,
+		render_pass,
+		1,
+		NULL,
+		surface_capabilities.currentExtent.width,
+		surface_capabilities.currentExtent.height,
+		1
 	};
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
@@ -611,9 +617,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkCommandPoolCreateInfo command_pool_create_info = {
-															VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-															NULL,
-															VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		NULL,
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
 	};
 
 	vk_result = vkCreateCommandPool (graphics_device, &command_pool_create_info, NULL, &swapchain_command_pool);
@@ -627,11 +633,11 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	swapchain_command_buffers = (VkCommandBuffer*)utils_calloc (swapchain_images_count, sizeof (VkCommandBuffer));
 
 	VkCommandBufferAllocateInfo command_buffer_allocate_info = {
-																	VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-																	NULL,
-																	swapchain_command_pool,
-																	VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-																	swapchain_images_count
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		NULL,
+		swapchain_command_pool,
+		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		swapchain_images_count
 	};
 
 	vk_result = vkAllocateCommandBuffers (graphics_device, &command_buffer_allocate_info, swapchain_command_buffers);
@@ -652,7 +658,6 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	swapchain_signal_semaphores = (VkSemaphore*)utils_calloc (swapchain_images_count, sizeof (VkSemaphore));
-
 	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
 		vk_result = vkCreateSemaphore (graphics_device, &semaphore_create_info, NULL, swapchain_signal_semaphores + i);
@@ -664,18 +669,36 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		}
 	}
 
+	swapchain_fences = (VkFence*)utils_calloc (swapchain_images_count, sizeof (VkFence));
+	VkFenceCreateInfo fence_create_info = {
+		VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		NULL,
+		0/*VK_FENCE_CREATE_SIGNALED_BIT*/
+	};
+
+	for (size_t i = 0; i < swapchain_images_count; ++i)
+	{
+		vk_result = vkCreateFence (graphics_device, &fence_create_info, NULL, swapchain_fences + i);
+		
+		if (vk_result != VK_SUCCESS)
+		{
+			age_result = AGE_ERROR_GRAPHICS_CREATE_FENCE;
+			goto exit;
+		}
+	}
+
 	VkBuffer staging_vertex_index_buffer = VK_NULL_HANDLE;
 	VkDeviceMemory staging_vertex_index_memory = VK_NULL_HANDLE;
 
 	VkBufferCreateInfo vertex_index_buffer_create_info = {
-															VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-															NULL,
-															0,
-															mesh_local_positions_colors_size + mesh_indices_size,
-															VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-															VK_SHARING_MODE_EXCLUSIVE,
-															0,
-															NULL
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		NULL,
+		0,
+		mesh_local_positions_colors_size + mesh_indices_size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_SHARING_MODE_EXCLUSIVE,
+		0,
+		NULL
 	};
 
 	vk_result = vkCreateBuffer (graphics_device, &vertex_index_buffer_create_info, NULL, &staging_vertex_index_buffer);
@@ -702,10 +725,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkMemoryAllocateInfo memory_allocate_info = {
-													VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-													NULL,
-													memory_requirements.size,
-													required_memory_type_index
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		NULL,
+		memory_requirements.size,
+		required_memory_type_index
 	};
 
 	vk_result = vkAllocateMemory (graphics_device, &memory_allocate_info, NULL, &staging_vertex_index_memory);
@@ -787,10 +810,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
 	VkCommandPoolCreateInfo transfer_command_pool_create_info = {
-																	VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-																	NULL,
-																	VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-																	transfer_queue_family_index
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		NULL,
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+		transfer_queue_family_index
 	};
 	
 	vk_result = vkCreateCommandPool (graphics_device, &transfer_command_pool_create_info, NULL, &transfer_command_pool);
@@ -802,11 +825,11 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	VkCommandBuffer copy_command_buffer = VK_NULL_HANDLE;
 	VkCommandBufferAllocateInfo copy_command_buffer_allocate_info = {
-																		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-																		NULL,
-																		transfer_command_pool,
-																		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-																		1
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		NULL,
+		transfer_command_pool,
+		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		1
 	};
 	vk_result = vkAllocateCommandBuffers (graphics_device, &copy_command_buffer_allocate_info, &copy_command_buffer);
 	if (vk_result != VK_SUCCESS)
@@ -816,10 +839,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkCommandBufferBeginInfo copy_command_buffer_begin_info = {
-																	VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-																	NULL,
-																	VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-																	NULL
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		NULL,
+		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		NULL
 	};
 
 	vk_result = vkBeginCommandBuffer (copy_command_buffer, &copy_command_buffer_begin_info);
@@ -840,16 +863,16 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkSubmitInfo submit_info = {
-									VK_STRUCTURE_TYPE_SUBMIT_INFO,
-									NULL,
-									0,
-									NULL,
-									0,
-									1,
-									&copy_command_buffer,
-									0,
-									NULL
-							   };
+		VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		NULL,
+		0,
+		NULL,
+		0,
+		1,
+		&copy_command_buffer,
+		0,
+		NULL
+	};
 
 	vk_result = vkQueueSubmit (transfer_queue, 1, &submit_info, VK_NULL_HANDLE);
 	if (vk_result != VK_SUCCESS)
@@ -860,14 +883,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	vkQueueWaitIdle (transfer_queue);
 
-	age_result = graphics_update_command_buffers ();
+	game_actor_count = actor_count;
+	game_actors_positions = actor_positions;
+
+	/*age_result = graphics_update_command_buffers ();
 	if (age_result != AGE_SUCCESS)
 	{
 		goto exit;
-	}
-
-	game_actor_count = actor_count;
-	game_actors_positions = actor_positions;
+	}*/
 
 exit: // clear function specific allocations before exit
 	for (size_t i = 0; i < requested_instance_layer_count; ++i)
@@ -905,28 +928,45 @@ exit: // clear function specific allocations before exit
 
 AGE_RESULT graphics_update_command_buffers (void)
 {
+	printf ("graphics_update_command_buffers\n");
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 
 	VkCommandBufferBeginInfo command_buffer_begin_info = {
-															VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-															NULL,
-															VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-															NULL
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		NULL,
+		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		NULL
 	};
 
 	VkRenderPassBeginInfo render_pass_begin_info = {
-														VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-														NULL,
-														render_pass,
-														VK_NULL_HANDLE,
-														{ {0,0}, surface_capabilities.currentExtent },
-														0,
-														NULL
+		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+		NULL,
+		render_pass,
+		VK_NULL_HANDLE,
+		{ {0,0}, surface_capabilities.currentExtent },
+		0,
+		NULL
 	};
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
+		vk_result = vkWaitForFences (graphics_device, 1, swapchain_fences + i, VK_TRUE, UINT64_MAX);
+		if (vk_result != VK_SUCCESS && vk_result != VK_TIMEOUT)
+		{
+			age_result = AGE_ERROR_GRAPHICS_WAIT_FOR_FENCES;
+			goto exit;
+		}
+
+		printf ("wait over for %d\n", i);
+
+		vk_result = vkResetFences (graphics_device, 1, swapchain_fences + i);
+		if (vk_result != VK_SUCCESS)
+		{
+			age_result = AGE_ERROR_GRAPHICS_RESET_FENCE;
+			goto exit;
+		}
+
 		vk_result = vkBeginCommandBuffer (swapchain_command_buffers[i], &command_buffer_begin_info);
 		if (vk_result != VK_SUCCESS)
 		{
@@ -954,6 +994,7 @@ exit: // clear function specific allocations before exit
 
 AGE_RESULT graphics_submit_present (void)
 {
+	printf ("graphics_submit_present\n");
 	AGE_RESULT age_result = AGE_SUCCESS;
 
 	size_t image_index = 0;
@@ -976,18 +1017,18 @@ AGE_RESULT graphics_submit_present (void)
 	VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 	VkSubmitInfo submit_info = {
-									VK_STRUCTURE_TYPE_SUBMIT_INFO,
-									NULL,
-									1,
-									&wait_semaphore,
-									&wait_stage_mask,
-									1,
-									swapchain_command_buffers + image_index,
-									1,
-									swapchain_signal_semaphores + image_index,
-							   };
+		VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		NULL,
+		1,
+		&wait_semaphore,
+		&wait_stage_mask,
+		1,
+		swapchain_command_buffers + image_index,
+		1,
+		swapchain_signal_semaphores + image_index,
+	};
 
-	vk_result = vkQueueSubmit (graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+	vk_result = vkQueueSubmit (graphics_queue, 1, &submit_info, swapchain_fences[image_index]);
 
 	if (vk_result != VK_SUCCESS)
 	{
@@ -996,15 +1037,15 @@ AGE_RESULT graphics_submit_present (void)
 	}
 
 	VkPresentInfoKHR present_info = {
-										VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-										NULL,
-										1,
-										swapchain_signal_semaphores + image_index,
-										1,
-										&swapchain,
-										&image_index,
-										NULL
-									};
+		VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		NULL,
+		1,
+		swapchain_signal_semaphores + image_index,
+		1,
+		&swapchain,
+		&image_index,
+		NULL
+	};
 
 	vk_result = vkQueuePresentKHR (graphics_queue, &present_info);
 
@@ -1024,6 +1065,16 @@ exit:
 void graphics_exit (void)
 {
 	vkQueueWaitIdle (graphics_queue);
+
+	if (swapchain_fences)
+	{
+		for (size_t i = 0; i < swapchain_images_count; ++i)
+		{
+			vkDestroyFence (graphics_device, swapchain_fences[i], NULL);
+		}
+
+		utils_free (swapchain_fences);
+	}
 
 	if (vertex_index_buffer != VK_NULL_HANDLE)
 	{

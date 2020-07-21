@@ -113,19 +113,31 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
     }
 
     graphics_check_data_from_game ();
-    AGE_RESULT age_result = graphics_update_command_buffers ();
     
-exit:
-    return age_result;
+    return AGE_SUCCESS;
 }
 
-void game_process_left_mouse_click (const size_t x, const size_t y)
+AGE_RESULT game_process_left_mouse_click (const size_t x, const size_t y)
 {
     printf ("Left click at %d %d\n", x, y);
-   
-    game_add_actor (x, y);
+    AGE_RESULT age_result = AGE_SUCCESS;
 
-    // update graphics command buffers
+    age_result = game_add_actor (x, y);
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+    
+    age_result = graphics_update_command_buffers ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+    
+    age_result = graphics_submit_present ();
+
+exit:
+    return age_result;
 }
 
 void game_process_right_mouse_click (const size_t x, const size_t y)
@@ -133,16 +145,27 @@ void game_process_right_mouse_click (const size_t x, const size_t y)
     printf ("Right click at %d %d\n", x, y);
 }
 
-void game_update (void)
+AGE_RESULT game_update (void)
 {
-    // update the positions and rotations of the actors based on the positional speed and rotational speed respectively
+    //printf ("game_update\n");
     
     for (size_t n = 0; n < actor_count; ++n)
     {
         actors_rotations[n].x += actors_rotations[n].y;
     }
 
-    graphics_submit_present ();
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    /*AGE_RESULT age_result = graphics_update_command_buffers ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }*/
+    
+    //age_result = graphics_submit_present ();
+
+exit:
+    return age_result;
 }
 
 void game_exit (void)

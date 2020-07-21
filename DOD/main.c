@@ -10,6 +10,8 @@
 
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
+    AGE_RESULT age_result = AGE_SUCCESS;
+
     switch (msg)
     {
         case WM_COMMAND:
@@ -30,7 +32,12 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             break;
 
         case WM_LBUTTONDOWN:
-            game_process_left_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+            age_result = game_process_left_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+            if (age_result != AGE_SUCCESS)
+            {
+                log_error (age_result);
+                PostQuitMessage (age_result);
+            }
             break;
 
         case WM_RBUTTONDOWN:
@@ -66,17 +73,19 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         return EXIT_FAILURE;
     }
 
-    HWND h_wnd = CreateWindow (L"DOD", 
-                               L"DOD",
-                               WS_OVERLAPPEDWINDOW,
-                               CW_USEDEFAULT,
-                               CW_USEDEFAULT,
-                               640,
-                               480, 
-                               NULL,
-                               NULL,
-                               h_instance,
-                               NULL);
+    HWND h_wnd = CreateWindow (
+        L"DOD", 
+        L"DOD",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        640,
+        480, 
+        NULL,
+        NULL,
+        h_instance,
+        NULL
+    );
 
     if (!h_wnd)
     {
@@ -91,7 +100,6 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     {
         log_error (result);
         goto exit;
-        return EXIT_FAILURE;
     }
 
     MSG msg;
@@ -106,7 +114,12 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         }
         else
         {
-            game_update ();
+            result = game_update ();
+            if (result != AGE_SUCCESS)
+            {
+                log_error (result);
+                goto exit;
+            }
         }
     }
 
