@@ -42,8 +42,20 @@ VkCommandBuffer* swapchain_command_buffers = NULL;
 VkSemaphore wait_semaphore = VK_NULL_HANDLE;
 VkSemaphore* swapchain_signal_semaphores = NULL;
 
+VkBuffer vertex_index_buffer = VK_NULL_HANDLE;
+VkDeviceMemory vertex_index_memory = VK_NULL_HANDLE;
+
+VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
+VkPipeline graphics_pipeline = VK_NULL_HANDLE;
+VkDescriptorSet* descriptor_sets = NULL;
+size_t descriptor_set_count = 0;
+
 const vec2** game_actors_positions = NULL;
 const size_t* game_actor_count = 0;
+
+float mesh_local_positions_colors[20] = { -1,-1,-1,1,1,1,1,-1, 1,0,0,0,1,0,0,0,1,1,1,1 };
+size_t mesh_indices[6] = { 0,1,2,0,2,3 };
+size_t mesh_index_count = 6;
 
 VkResult create_debug_utils_messenger (VkInstance instance,
 	const VkDebugUtilsMessengerCreateInfoEXT* debug_utils_messenger_create_info,
@@ -95,11 +107,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_positions, const size_t* actor_count)
 {
 #ifdef _DEBUG 
-    is_validation_needed = true;
+	is_validation_needed = true;
 #elif DEBUG
 	is_validation_needed = true;
 #else
-    is_validation_needed = false;
+	is_validation_needed = false;
 #endif
 	char** requested_instance_layers = NULL;
 	size_t requested_instance_layer_count = 0;
@@ -107,36 +119,36 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	char** requested_instance_extensions = NULL;
 	size_t requested_instance_extension_count = 0;
 
-    if (is_validation_needed)
-    {
-        size_t layer_count = 0;
-        vkEnumerateInstanceLayerProperties (&layer_count, NULL);
+	if (is_validation_needed)
+	{
+		size_t layer_count = 0;
+		vkEnumerateInstanceLayerProperties (&layer_count, NULL);
 		VkLayerProperties* layer_properties = (VkLayerProperties*)utils_calloc (layer_count, sizeof (VkLayerProperties));
-        vkEnumerateInstanceLayerProperties (&layer_count, layer_properties);
+		vkEnumerateInstanceLayerProperties (&layer_count, layer_properties);
 
-        for (size_t l = 0; l < layer_count; l++)
-        {
-            if (strcmp (layer_properties[l].layerName, "VK_LAYER_LUNARG_standard_validation") == 0)
-            {
-                if (requested_instance_layers == NULL)
-                {
-                    requested_instance_layers = (char**)utils_calloc (1, sizeof (char*));
-                }
-                else
-                {
-                    requested_instance_layers = (char**)utils_realloc_zero (requested_instance_layers, sizeof (char*) * requested_instance_layer_count, sizeof (char*) * (requested_instance_layer_count + 1));
-                }
+		for (size_t l = 0; l < layer_count; l++)
+		{
+			if (strcmp (layer_properties[l].layerName, "VK_LAYER_LUNARG_standard_validation") == 0)
+			{
+				if (requested_instance_layers == NULL)
+				{
+					requested_instance_layers = (char**)utils_calloc (1, sizeof (char*));
+				}
+				else
+				{
+					requested_instance_layers = (char**)utils_realloc_zero (requested_instance_layers, sizeof (char*) * requested_instance_layer_count, sizeof (char*) * (requested_instance_layer_count + 1));
+				}
 
-                requested_instance_layers[requested_instance_layer_count] = (char*)utils_calloc (strlen ("VK_LAYER_LUNARG_standard_validation") + 1, sizeof (char));
-                strcpy (requested_instance_layers[requested_instance_layer_count], "VK_LAYER_LUNARG_standard_validation");
-                ++requested_instance_layer_count;
+				requested_instance_layers[requested_instance_layer_count] = (char*)utils_calloc (strlen ("VK_LAYER_LUNARG_standard_validation") + 1, sizeof (char));
+				strcpy (requested_instance_layers[requested_instance_layer_count], "VK_LAYER_LUNARG_standard_validation");
+				++requested_instance_layer_count;
 
-                break;
-            }
-        }
+				break;
+			}
+		}
 
-        utils_free (layer_properties);
-    }
+		utils_free (layer_properties);
+	}
 
 	size_t extension_count = 0;
 	vkEnumerateInstanceExtensionProperties (NULL, &extension_count, NULL);
@@ -199,9 +211,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	utils_free (extension_properties);
 
-    VkApplicationInfo application_info = {VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL, "Asteroids", VK_MAKE_VERSION (1, 0, 0), "AGE", VK_MAKE_VERSION (1, 0, 0), VK_API_VERSION_1_2};
-    VkInstanceCreateInfo instance_create_info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL, 0, &application_info, requested_instance_layer_count, requested_instance_layers, requested_instance_extension_count, requested_instance_extensions};
-    
+	VkApplicationInfo application_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL, "Asteroids", VK_MAKE_VERSION (1, 0, 0), "AGE", VK_MAKE_VERSION (1, 0, 0), VK_API_VERSION_1_2 };
+	VkInstanceCreateInfo instance_create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL, 0, &application_info, requested_instance_layer_count, requested_instance_layers, requested_instance_extension_count, requested_instance_extensions };
+
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = vkCreateInstance (&instance_create_info, NULL, &instance);
 	if (vk_result != VK_SUCCESS)
@@ -223,7 +235,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 																				VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
 																				debug_messenger_callback,
 																				NULL
-																			};
+	};
 
 	vk_result = create_debug_utils_messenger (instance, &debug_utils_messenger_create_info, NULL, &debug_utils_messenger);
 
@@ -242,7 +254,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	VkPhysicalDevice* physical_devices = (VkPhysicalDevice*) utils_calloc (physical_device_count, sizeof (VkPhysicalDevice));
+	VkPhysicalDevice* physical_devices = (VkPhysicalDevice*)utils_calloc (physical_device_count, sizeof (VkPhysicalDevice));
 	vkEnumeratePhysicalDevices (instance, &physical_device_count, physical_devices);
 
 	physical_device = physical_devices[0];
@@ -282,7 +294,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 				compute_queue_family_index = i;
 				break;
 			}
-		}	
+		}
 	}
 
 	for (size_t i = 0; i < queue_family_count; ++i)
@@ -303,16 +315,16 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 				transfer_queue_family_index = i;
 				break;
 			}
-		}	
+		}
 	}
-	
+
 	vkGetPhysicalDeviceMemoryProperties (physical_device, &physical_device_memory_properties);
 
 	VkPhysicalDeviceProperties device_properties;
 	vkGetPhysicalDeviceProperties (physical_device, &device_properties);
 	physical_device_limits = device_properties.limits;
 
-	VkWin32SurfaceCreateInfoKHR surface_create_info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, NULL, 0, h_instance, h_wnd};
+	VkWin32SurfaceCreateInfoKHR surface_create_info = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, NULL, 0, h_instance, h_wnd };
 
 	vk_result = vkCreateWin32SurfaceKHR (instance, &surface_create_info, NULL, &surface);
 
@@ -432,18 +444,18 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	}
 
 	VkDeviceCreateInfo device_create_info = {
-												VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, 
-												NULL, 
-												0, 
-												unique_queue_family_index_count, 
-												queue_create_infos, 
+												VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+												NULL,
+												0,
+												unique_queue_family_index_count,
+												queue_create_infos,
 												0,
 												NULL,
 												requested_device_extension_count,
 												requested_device_extensions,
 												&device_features
-											};
-	
+	};
+
 	vk_result = vkCreateDevice (physical_device, &device_create_info, NULL, &graphics_device);
 
 	if (vk_result != VK_SUCCESS)
@@ -471,8 +483,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 															chosen_present_mode,
 															1,
 															VK_NULL_HANDLE
-													 };
-	
+	};
+
 	vk_result = vkCreateSwapchainKHR (graphics_device, &swapchain_create_info, NULL, &swapchain);
 
 	if (vk_result != VK_SUCCESS)
@@ -480,13 +492,13 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		age_result = AGE_ERROR_GRAPHICS_CREATE_SWAPCHAIN;
 		goto exit;
 	}
-	
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, NULL);
-	swapchain_images = (VkImage*) utils_calloc (swapchain_images_count, sizeof (VkImage));
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, swapchain_images);
-	swapchain_image_views = (VkImageView*) utils_calloc (swapchain_images_count, sizeof (VkImageView));
 
-	VkImageSubresourceRange subresource_range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, NULL);
+	swapchain_images = (VkImage*)utils_calloc (swapchain_images_count, sizeof (VkImage));
+	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, swapchain_images);
+	swapchain_image_views = (VkImageView*)utils_calloc (swapchain_images_count, sizeof (VkImageView));
+
+	VkImageSubresourceRange subresource_range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 	VkImageViewCreateInfo image_view_create_info = {
 														VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 														NULL,
@@ -496,8 +508,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 														chosen_surface_format.format,
 														{0},
 														subresource_range
-												   };
-	
+	};
+
 	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
 		image_view_create_info.image = swapchain_images[i];
@@ -510,7 +522,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		}
 	}
 
-	
+
 	size_t graphics_queue_index = 0;
 	size_t compute_queue_index = graphics_queue_family_index == compute_queue_family_index ? 1 : 0;
 	size_t transfer_queue_index = transfer_queue_family_index == compute_queue_family_index ? compute_queue_index + 1 : 0;
@@ -529,12 +541,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 																VK_ATTACHMENT_STORE_OP_DONT_CARE,
 																VK_IMAGE_LAYOUT_UNDEFINED,
 																VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-														   };
+	};
 
 	VkAttachmentReference color_attachment_reference = {
 															0,
 															VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-													   };
+	};
 
 	VkSubpassDescription color_subpass_description = {
 															0,
@@ -547,7 +559,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 															NULL,
 															0,
 															NULL
-													 };
+	};
 
 	VkRenderPassCreateInfo render_pass_create_info = {
 														VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -559,7 +571,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 														&color_subpass_description,
 														0,
 														NULL
-													 };
+	};
 
 	vk_result = vkCreateRenderPass (graphics_device, &render_pass_create_info, NULL, &render_pass);
 
@@ -581,12 +593,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 															surface_capabilities.currentExtent.width,
 															surface_capabilities.currentExtent.height,
 															1
-													  };
+	};
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
 		framebuffer_create_info.pAttachments = swapchain_image_views + i;
-		
+
 		vk_result = vkCreateFramebuffer (graphics_device, &framebuffer_create_info, NULL, swapchain_framebuffers + i);
 
 		if (vk_result != VK_SUCCESS)
@@ -600,7 +612,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 															VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 															NULL,
 															VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-													   };
+	};
 
 	vk_result = vkCreateCommandPool (graphics_device, &command_pool_create_info, NULL, &swapchain_command_pool);
 
@@ -618,7 +630,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 																	swapchain_command_pool,
 																	VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 																	swapchain_images_count
-															   };
+	};
 
 	vk_result = vkAllocateCommandBuffers (graphics_device, &command_buffer_allocate_info, swapchain_command_buffers);
 
@@ -650,8 +662,171 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		}
 	}
 
-	age_result = graphics_draw_background ();
+	VkBuffer staging_vertex_index_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_vertex_index_memory = VK_NULL_HANDLE;
 
+	VkBufferCreateInfo vertex_index_buffer_create_info = {
+															VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+															NULL,
+															0,
+															sizeof (float) * 20 + sizeof (size_t) * 6,
+															VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+															VK_SHARING_MODE_EXCLUSIVE,
+															0,
+															NULL
+	};
+
+	vk_result = vkCreateBuffer (graphics_device, &vertex_index_buffer_create_info, NULL, &staging_vertex_index_buffer);
+
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
+		goto exit;
+	}
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements (graphics_device, staging_vertex_index_buffer, &memory_requirements);
+
+	uint32_t required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	uint32_t required_memory_type_index = 0;
+
+	for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
+	{
+		if (memory_requirements.memoryTypeBits & (1 << i) && required_memory_types & physical_device_memory_properties.memoryTypes[i].propertyFlags)
+		{
+			required_memory_type_index = i;
+			break;
+		}
+	}
+
+	VkMemoryAllocateInfo memory_allocate_info = {
+													VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+													NULL,
+													memory_requirements.size,
+													required_memory_type_index
+	};
+
+	vk_result = vkAllocateMemory (graphics_device, &memory_allocate_info, NULL, &staging_vertex_index_memory);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
+		goto exit;
+	}
+
+	void* data = NULL;
+
+	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, 0, sizeof (float) * 20, 0, &data);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, mesh_local_positions_colors, sizeof (float) * 20);
+	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
+
+	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, sizeof (float) * 20, sizeof (size_t) * 6, 0, &data);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, mesh_indices, sizeof (size_t) * 6);
+	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
+
+	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+	vk_result = vkCreateBuffer (graphics_device, &vertex_index_buffer_create_info, NULL, &vertex_index_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
+		goto exit;
+	}
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements (graphics_device, vertex_index_buffer, &memory_requirements);
+
+	uint32_t required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	uint32_t required_memory_type_index = 0;
+
+	for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
+	{
+		if (memory_requirements.memoryTypeBits & (1 << i) && required_memory_types & physical_device_memory_properties.memoryTypes[i].propertyFlags)
+		{
+			required_memory_type_index = i;
+			break;
+		}
+	}
+
+	VkMemoryAllocateInfo memory_allocate_info = {
+													VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+													NULL,
+													memory_requirements.size,
+													required_memory_type_index
+	};
+
+	vk_result = vkAllocateMemory (graphics_device, &memory_allocate_info, NULL, &vertex_index_memory);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
+		goto exit;
+	}
+
+	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
+	VkCommandPoolCreateInfo transfer_command_pool_create_info = {
+																	VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+																	NULL,
+																	VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+																	transfer_queue_family_index
+	};
+	vk_result = vkCreateCommandPool (graphics_device, &transfer_command_pool_create_info, NULL, &transfer_command_pool);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_COMMAND_POOL;
+		goto exit;
+	}
+
+	VkCommandBuffer copy_command_buffer = VK_NULL_HANDLE;
+	VkCommandBufferAllocateInfo copy_command_buffer_allocate_info = {
+																		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+																		NULL,
+																		transfer_command_pool,
+																		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+																		1
+	};
+	vk_result = vkAllocateCommandBuffers (graphics_device, &copy_command_buffer_allocate_info, &copy_command_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_COMMAND_BUFFER;
+		goto exit;
+	}
+
+	VkCommandBufferBeginInfo copy_command_buffer_begin_info = {
+																	VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+																	NULL,
+																	VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+																	NULL
+	};
+
+	vk_result = vkBeginCommandBuffer (copy_command_buffer, &copy_command_buffer_begin_info);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
+		goto exit;
+	}
+
+	VkBufferCopy buffer_copy = { 0, 0, sizeof (float) * 20 * sizeof (size_t) * 6 };
+	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_buffer, vertex_index_buffer, 1, &buffer_copy);
+
+	vk_result = vkEndCommandBuffer (copy_command_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_END_COMMAND_BUFFER;
+		goto exit;
+	}
+
+	age_result = graphics_update_command_buffers ();
 	if (age_result != AGE_SUCCESS)
 	{
 		goto exit;
@@ -685,10 +860,13 @@ exit: // clear function specific allocations before exit
 	}
 	utils_free (requested_device_extensions);
 
-    return age_result;
+	vkDestroyBuffer (graphics_device, staging_vertex_index_buffer, NULL);
+	vkFreeMemory (graphics_device, staging_vertex_index_memory, NULL);
+
+	return age_result;
 }
 
-AGE_RESULT graphics_draw_background (void)
+AGE_RESULT graphics_update_command_buffers (void)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
@@ -708,7 +886,7 @@ AGE_RESULT graphics_draw_background (void)
 														{ {0,0}, surface_capabilities.currentExtent },
 														0,
 														NULL
-													};
+	};
 
 	for (size_t i = 0; i < swapchain_images_count; ++i)
 	{
@@ -718,10 +896,20 @@ AGE_RESULT graphics_draw_background (void)
 			age_result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
 			goto exit;
 		}
-		
+
 		render_pass_begin_info.framebuffer = swapchain_framebuffers[i];
 
 		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		
+		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, descriptor_sets, 0, NULL);
+
+		// Bind descriptor sets
+		// Draw
+		for (size_t i = 0; i < game_actor_count; ++i)
+		{
+		}
+
 		vkCmdEndRenderPass (swapchain_command_buffers[i]);
 
 		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);
@@ -805,9 +993,19 @@ exit:
 	return age_result;
 }
 
-void graphics_exit ()
+void graphics_exit (void)
 {
 	vkQueueWaitIdle (graphics_queue);
+
+	if (vertex_index_buffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer (graphics_device, vertex_index_buffer, NULL);
+	}
+
+	if (vertex_index_memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory (graphics_device, vertex_index_memory, NULL);
+	}
 
 	if (wait_semaphore != VK_NULL_HANDLE)
 	{
@@ -896,7 +1094,7 @@ void graphics_exit ()
     }
 }
 
-void graphics_check_data_from_game ()
+void graphics_check_data_from_game (void)
 {
 	printf ("GRAPHICS\n");
 	for (size_t i = 0; i < *game_actor_count; ++i)

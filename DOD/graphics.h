@@ -5,10 +5,10 @@
 
 #include <Windows.h>
 
-AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_positions, const size_t* actor_count);
-AGE_RESULT graphics_draw_background (void);
+AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_actor_positions, const size_t* game_actor_count);
+AGE_RESULT graphics_update_command_buffers (void);
 AGE_RESULT graphics_submit_present (void);
 void graphics_exit (void);
 
 
-void graphics_check_data_from_game ();
+void graphics_check_data_from_game (void);

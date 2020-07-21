@@ -54,7 +54,7 @@ exit:  // place to clean up local allocations
     return result;
 }
 
-void game_add_actor (size_t x, size_t y)
+AGE_RESULT game_add_actor (size_t x, size_t y)
 {
     if (actor_count == memory_reserved_for_actors)
     {
@@ -113,6 +113,10 @@ void game_add_actor (size_t x, size_t y)
     }
 
     graphics_check_data_from_game ();
+    AGE_RESULT age_result = graphics_update_command_buffers ();
+    
+exit:
+    return age_result;
 }
 
 void game_process_left_mouse_click (const size_t x, const size_t y)
@@ -129,7 +133,7 @@ void game_process_right_mouse_click (const size_t x, const size_t y)
     printf ("Right click at %d %d\n", x, y);
 }
 
-void game_update ()
+void game_update (void)
 {
     // update the positions and rotations of the actors based on the positional speed and rotational speed respectively
     
@@ -141,7 +145,7 @@ void game_update ()
     graphics_submit_present ();
 }
 
-void game_exit ()
+void game_exit (void)
 {
     free (actors_positions);
     free (actors_directions);
