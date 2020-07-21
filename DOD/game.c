@@ -1,5 +1,7 @@
 #include "game.h"
 #include "graphics.h"
+#include "math_types.h"
+
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
@@ -20,19 +22,6 @@
  *
  * */
 
-typedef struct vec2_
-{
-    float x;
-    float y;
-} vec2;
-
-typedef struct vec3_
-{
-    float x;
-    float y;
-    float z;
-} vec3;
-
 vec2* actors_positions = NULL; // x,y positions clamped between -100 and +100
 vec2* actors_directions = NULL; // x,y normalized vectors
 vec2* actors_rotations = NULL;  //  x,y rotations, rotation_speeds
@@ -40,7 +29,7 @@ vec2* actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 size_t memory_reserved_for_actors = 0;
 size_t actor_count = 0;
 
-void game_reserve_memory_for_actors (size_t actors_to_reserve)
+void game_reserve_memory_for_actors (const size_t actors_to_reserve)
 {
     memory_reserved_for_actors = actors_to_reserve;
     
@@ -49,12 +38,12 @@ void game_reserve_memory_for_actors (size_t actors_to_reserve)
     actors_rotations = (vec2*) calloc (memory_reserved_for_actors, sizeof (vec2));
 }
 
-AGE_RESULT game_init (HINSTANCE h_instance, HWND h_wnd)
+AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     game_reserve_memory_for_actors (5);
     srand (time (NULL));
     
-    AGE_RESULT result = graphics_init (h_instance, h_wnd);
+    AGE_RESULT result = graphics_init (h_instance, h_wnd, &actors_positions, &actor_count);
 
     if (result != AGE_SUCCESS)
     {
@@ -78,7 +67,7 @@ void game_add_actor (size_t x, size_t y)
         }
         else
         {
-            printf ("Could not realloc %d bytes for actor_positions\n", sizeof (vec2) * memory_reserved_for_actors);
+            printf ("Could not realloc %d bytes for game_actors_positions\n", sizeof (vec2) * memory_reserved_for_actors);
         }
         
         temp = (vec2*)realloc (actors_directions, sizeof (vec2) * memory_reserved_for_actors);
@@ -115,15 +104,18 @@ void game_add_actor (size_t x, size_t y)
 
     ++actor_count;
 
+    printf ("GAME\n");
     for (size_t n = 0; n < actor_count; ++n)
     {
         printf ("Positions n = %d, x = %f, y = %f\n", n, actors_positions[n].x, actors_positions[n].y);
         printf ("Directions n = %d, x = %f, y = %f\n", n, actors_directions[n].x, actors_directions[n].y);
         printf ("Rotations n = %d, r = %f, s = %f\n", n, actors_rotations[n].x,  actors_rotations[n].y);
     }
+
+    graphics_check_data_from_game ();
 }
 
-void game_process_left_mouse_click (size_t x, size_t y)
+void game_process_left_mouse_click (const size_t x, const size_t y)
 {
     printf ("Left click at %d %d\n", x, y);
    
@@ -132,7 +124,7 @@ void game_process_left_mouse_click (size_t x, size_t y)
     // update graphics command buffers
 }
 
-void game_process_right_mouse_click (size_t x, size_t y)
+void game_process_right_mouse_click (const size_t x, const size_t y)
 {
     printf ("Right click at %d %d\n", x, y);
 }

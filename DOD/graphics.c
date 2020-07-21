@@ -42,6 +42,9 @@ VkCommandBuffer* swapchain_command_buffers = NULL;
 VkSemaphore wait_semaphore = VK_NULL_HANDLE;
 VkSemaphore* swapchain_signal_semaphores = NULL;
 
+const vec2** game_actors_positions = NULL;
+const size_t* game_actor_count = 0;
+
 VkResult create_debug_utils_messenger (VkInstance instance,
 	const VkDebugUtilsMessengerCreateInfoEXT* debug_utils_messenger_create_info,
 	const VkAllocationCallbacks* allocation_callbacks,
@@ -89,7 +92,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 	return false;
 }
 
-AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
+AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_positions, const size_t* actor_count)
 {
 #ifdef _DEBUG 
     is_validation_needed = true;
@@ -654,6 +657,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd)
 		goto exit;
 	}
 
+	game_actor_count = actor_count;
+	game_actors_positions = actor_positions;
+
 exit: // clear function specific allocations before exit
 	for (size_t i = 0; i < requested_instance_layer_count; ++i)
 	{
@@ -888,4 +894,13 @@ void graphics_exit ()
     {
         vkDestroyInstance (instance, NULL);
     }
+}
+
+void graphics_check_data_from_game ()
+{
+	printf ("GRAPHICS\n");
+	for (size_t i = 0; i < *game_actor_count; ++i)
+	{
+		printf ("Positions n = %d, x = %f, y = %f\n", i, (*game_actors_positions + i)->x, (*game_actors_positions + i)->y);
+	}
 }

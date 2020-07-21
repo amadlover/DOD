@@ -1,7 +1,7 @@
 #include "log.h"
 #include <stdio.h>
 
-AGE_RESULT log_error (AGE_RESULT result)
+AGE_RESULT log_error (const AGE_RESULT result)
 {
 	switch (result)
 	{

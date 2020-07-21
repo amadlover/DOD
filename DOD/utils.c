@@ -105,24 +105,24 @@ void utils_read_image_from_uri (const char* file_path, const char* uri, int* wid
 	pixels = stbi_load (full_path, width, height, bpp, 4);
 }
 
-void* utils_malloc (size_t size)
+void* utils_malloc (const size_t size)
 {
 	return malloc (size);
 }
 
-void* utils_malloc_zero (size_t size)
+void* utils_malloc_zero (const size_t size)
 {
 	void* ptr = malloc (size);
 	memset (ptr, 0, size);
 	return ptr;
 }
 
-void* utils_aligned_malloc (size_t size, size_t alignment)
+void* utils_aligned_malloc (const size_t size, const size_t alignment)
 {
 	return _aligned_malloc (size, alignment);
 }
 
-void* utils_aligned_malloc_zero (size_t size, size_t alignment)
+void* utils_aligned_malloc_zero (const size_t size, const size_t alignment)
 {
 	void* ptr = _aligned_malloc (size, alignment);
 	memset (ptr, 0, size);
@@ -130,12 +130,12 @@ void* utils_aligned_malloc_zero (size_t size, size_t alignment)
 	return ptr;
 }
 
-void* utils_calloc (size_t count, size_t size)
+void* utils_calloc (const size_t count, const size_t size)
 {
 	return calloc (count, size);
 }
 
-void* utils_aligned_calloc (size_t count, size_t size, size_t alignment)
+void* utils_aligned_calloc (const size_t count, const size_t size, const size_t alignment)
 {
 	void* ptr = _aligned_malloc (size * count, alignment);
 	memset (ptr, 0, size * count);
@@ -175,7 +175,7 @@ void utils_aligned_free (void* ptr)
 	}
 }
 
-void utils_free_image_data (uint8_t* pixels)
+void utils_free_image_data (uint8_t * pixels)
 {
 	stbi_image_free (pixels);
 }
