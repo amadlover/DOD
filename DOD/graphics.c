@@ -228,7 +228,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 																				VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 																				NULL,
 																				0,
-																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+																				/*VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |*/
 																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
 																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
 																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
@@ -715,6 +715,13 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
+	vk_result = vkBindBufferMemory (graphics_device, staging_vertex_index_buffer, staging_vertex_index_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
+		goto exit;
+	}
+
 	void* data = NULL;
 
 	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, 0, mesh_local_positions_colors_size, 0, &data);
@@ -724,7 +731,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	memcpy (data, mesh_local_positions_colors, sizeof (float) * 15);
+	memcpy (data, mesh_local_positions_colors, mesh_local_positions_colors_size);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, mesh_local_positions_colors_size, mesh_indices_size, 0, &data);
@@ -734,9 +741,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	memcpy (data, mesh_indices, sizeof (size_t) * 3);
+	memcpy (data, mesh_indices, mesh_indices_size);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
-
+		
 	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
 	vk_result = vkCreateBuffer (graphics_device, &vertex_index_buffer_create_info, NULL, &vertex_index_buffer);
@@ -769,6 +776,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
 		goto exit;
 	}
+
+	vk_result = vkBindBufferMemory (graphics_device, vertex_index_buffer, vertex_index_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
+		goto exit;
+	}
+
 
 	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
 	VkCommandPoolCreateInfo transfer_command_pool_create_info = {
@@ -923,8 +938,6 @@ AGE_RESULT graphics_update_command_buffers (void)
 
 		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		
-		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
-		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, descriptor_sets, 0, NULL);
 		vkCmdEndRenderPass (swapchain_command_buffers[i]);
 
 		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);
