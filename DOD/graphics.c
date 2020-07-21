@@ -53,9 +53,11 @@ size_t descriptor_set_count = 0;
 const vec2** game_actors_positions = NULL;
 const size_t* game_actor_count = 0;
 
-float mesh_local_positions_colors[20] = { -1,-1,-1,1,1,1,1,-1, 1,0,0,0,1,0,0,0,1,1,1,1 };
-size_t mesh_indices[6] = { 0,1,2,0,2,3 };
-size_t mesh_index_count = 6;
+float mesh_local_positions_colors[15] = { -1, 0, 1,0,0,1, 0, 0,1,0, 0, 1,0,0,1 };
+size_t mesh_indices[3] = { 0,1,2 };
+size_t mesh_local_positions_colors_size = sizeof (float) * 15;
+size_t mesh_indices_size = sizeof (size_t) * 3;
+size_t mesh_index_count = 3;
 
 VkResult create_debug_utils_messenger (VkInstance instance,
 	const VkDebugUtilsMessengerCreateInfoEXT* debug_utils_messenger_create_info,
@@ -226,7 +228,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 																				VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 																				NULL,
 																				0,
-																				/*VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |*/
+																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
 																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
 																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
 																				VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
@@ -669,7 +671,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 															VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 															NULL,
 															0,
-															sizeof (float) * 20 + sizeof (size_t) * 6,
+															mesh_local_positions_colors_size + mesh_indices_size,
 															VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 															VK_SHARING_MODE_EXCLUSIVE,
 															0,
@@ -715,24 +717,24 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	void* data = NULL;
 
-	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, 0, sizeof (float) * 20, 0, &data);
+	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, 0, mesh_local_positions_colors_size, 0, &data);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
 		goto exit;
 	}
 
-	memcpy (data, mesh_local_positions_colors, sizeof (float) * 20);
+	memcpy (data, mesh_local_positions_colors, sizeof (float) * 15);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
 
-	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, sizeof (float) * 20, sizeof (size_t) * 6, 0, &data);
+	vk_result = vkMapMemory (graphics_device, staging_vertex_index_memory, mesh_local_positions_colors_size, mesh_indices_size, 0, &data);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
 		goto exit;
 	}
 
-	memcpy (data, mesh_indices, sizeof (size_t) * 6);
+	memcpy (data, mesh_indices, sizeof (size_t) * 3);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
 
 	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -744,11 +746,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	VkMemoryRequirements memory_requirements;
 	vkGetBufferMemoryRequirements (graphics_device, vertex_index_buffer, &memory_requirements);
 
-	uint32_t required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	uint32_t required_memory_type_index = 0;
+	required_memory_types = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	required_memory_type_index = 0;
 
 	for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
 	{
@@ -759,12 +760,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		}
 	}
 
-	VkMemoryAllocateInfo memory_allocate_info = {
-													VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-													NULL,
-													memory_requirements.size,
-													required_memory_type_index
-	};
+	memory_allocate_info.allocationSize = memory_requirements.size;
+	memory_allocate_info.memoryTypeIndex = required_memory_type_index;
 
 	vk_result = vkAllocateMemory (graphics_device, &memory_allocate_info, NULL, &vertex_index_memory);
 	if (vk_result != VK_SUCCESS)
@@ -777,9 +774,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	VkCommandPoolCreateInfo transfer_command_pool_create_info = {
 																	VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 																	NULL,
-																	VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+																	VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 																	transfer_queue_family_index
 	};
+	
 	vk_result = vkCreateCommandPool (graphics_device, &transfer_command_pool_create_info, NULL, &transfer_command_pool);
 	if (vk_result != VK_SUCCESS)
 	{
@@ -816,7 +814,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	VkBufferCopy buffer_copy = { 0, 0, sizeof (float) * 20 * sizeof (size_t) * 6 };
+	VkBufferCopy buffer_copy = { 0, 0, (VkDeviceSize)mesh_local_positions_colors_size + (VkDeviceSize)mesh_indices_size };
 	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_buffer, vertex_index_buffer, 1, &buffer_copy);
 
 	vk_result = vkEndCommandBuffer (copy_command_buffer);
@@ -825,6 +823,27 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		age_result = AGE_ERROR_GRAPHICS_END_COMMAND_BUFFER;
 		goto exit;
 	}
+
+	VkSubmitInfo submit_info = {
+									VK_STRUCTURE_TYPE_SUBMIT_INFO,
+									NULL,
+									0,
+									NULL,
+									0,
+									1,
+									&copy_command_buffer,
+									0,
+									NULL
+							   };
+
+	vk_result = vkQueueSubmit (transfer_queue, 1, &submit_info, VK_NULL_HANDLE);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_QUEUE_SUBMIT;
+		goto exit;
+	}
+
+	vkQueueWaitIdle (transfer_queue);
 
 	age_result = graphics_update_command_buffers ();
 	if (age_result != AGE_SUCCESS)
@@ -862,6 +881,9 @@ exit: // clear function specific allocations before exit
 
 	vkDestroyBuffer (graphics_device, staging_vertex_index_buffer, NULL);
 	vkFreeMemory (graphics_device, staging_vertex_index_memory, NULL);
+
+	vkFreeCommandBuffers (graphics_device, transfer_command_pool, 1, &copy_command_buffer);
+	vkDestroyCommandPool (graphics_device, transfer_command_pool, NULL);
 
 	return age_result;
 }
@@ -903,13 +925,6 @@ AGE_RESULT graphics_update_command_buffers (void)
 		
 		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, descriptor_sets, 0, NULL);
-
-		// Bind descriptor sets
-		// Draw
-		for (size_t i = 0; i < game_actor_count; ++i)
-		{
-		}
-
 		vkCmdEndRenderPass (swapchain_command_buffers[i]);
 
 		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);
