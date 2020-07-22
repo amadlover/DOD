@@ -27,7 +27,7 @@ VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 
 VkImage* swapchain_images = NULL;
 VkImageView* swapchain_image_views = NULL;
-size_t swapchain_images_count = 0;
+size_t swapchain_image_count = 0;
 
 VkQueue graphics_queue = VK_NULL_HANDLE;
 VkQueue compute_queue = VK_NULL_HANDLE;
@@ -501,10 +501,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, NULL);
-	swapchain_images = (VkImage*)utils_calloc (swapchain_images_count, sizeof (VkImage));
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_images_count, swapchain_images);
-	swapchain_image_views = (VkImageView*)utils_calloc (swapchain_images_count, sizeof (VkImageView));
+	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_image_count, NULL);
+	swapchain_images = (VkImage*)utils_calloc (swapchain_image_count, sizeof (VkImage));
+	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_image_count, swapchain_images);
+	swapchain_image_views = (VkImageView*)utils_calloc (swapchain_image_count, sizeof (VkImageView));
 
 	VkImageSubresourceRange subresource_range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 	VkImageViewCreateInfo image_view_create_info = {
@@ -518,7 +518,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		subresource_range
 	};
 
-	for (size_t i = 0; i < swapchain_images_count; ++i)
+	for (size_t i = 0; i < swapchain_image_count; ++i)
 	{
 		image_view_create_info.image = swapchain_images[i];
 		vk_result = vkCreateImageView (graphics_device, &image_view_create_info, NULL, swapchain_image_views + i);
@@ -589,7 +589,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	swapchain_framebuffers = (VkFramebuffer*)utils_calloc (swapchain_images_count, sizeof (VkFramebuffer));
+	swapchain_framebuffers = (VkFramebuffer*)utils_calloc (swapchain_image_count, sizeof (VkFramebuffer));
 
 	VkFramebufferCreateInfo framebuffer_create_info = {
 		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -603,7 +603,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		1
 	};
 
-	for (size_t i = 0; i < swapchain_images_count; ++i)
+	for (size_t i = 0; i < swapchain_image_count; ++i)
 	{
 		framebuffer_create_info.pAttachments = swapchain_image_views + i;
 
@@ -630,14 +630,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	swapchain_command_buffers = (VkCommandBuffer*)utils_calloc (swapchain_images_count, sizeof (VkCommandBuffer));
+	swapchain_command_buffers = (VkCommandBuffer*)utils_calloc (swapchain_image_count, sizeof (VkCommandBuffer));
 
 	VkCommandBufferAllocateInfo command_buffer_allocate_info = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		NULL,
 		swapchain_command_pool,
 		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		swapchain_images_count
+		swapchain_image_count
 	};
 
 	vk_result = vkAllocateCommandBuffers (graphics_device, &command_buffer_allocate_info, swapchain_command_buffers);
@@ -657,8 +657,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	swapchain_signal_semaphores = (VkSemaphore*)utils_calloc (swapchain_images_count, sizeof (VkSemaphore));
-	for (size_t i = 0; i < swapchain_images_count; ++i)
+	swapchain_signal_semaphores = (VkSemaphore*)utils_calloc (swapchain_image_count, sizeof (VkSemaphore));
+	for (size_t i = 0; i < swapchain_image_count; ++i)
 	{
 		vk_result = vkCreateSemaphore (graphics_device, &semaphore_create_info, NULL, swapchain_signal_semaphores + i);
 
@@ -669,14 +669,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		}
 	}
 
-	swapchain_fences = (VkFence*)utils_calloc (swapchain_images_count, sizeof (VkFence));
+	swapchain_fences = (VkFence*)utils_calloc (swapchain_image_count, sizeof (VkFence));
 	VkFenceCreateInfo fence_create_info = {
 		VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 		NULL,
-		0/*VK_FENCE_CREATE_SIGNALED_BIT*/
+		VK_FENCE_CREATE_SIGNALED_BIT
 	};
 
-	for (size_t i = 0; i < swapchain_images_count; ++i)
+	for (size_t i = 0; i < swapchain_image_count; ++i)
 	{
 		vk_result = vkCreateFence (graphics_device, &fence_create_info, NULL, swapchain_fences + i);
 		
@@ -949,16 +949,22 @@ AGE_RESULT graphics_update_command_buffers (void)
 		NULL
 	};
 
-	for (size_t i = 0; i < swapchain_images_count; ++i)
+	vk_result = vkWaitForFences (graphics_device, swapchain_image_count, swapchain_fences, VK_FALSE, UINT64_MAX);
+	if (vk_result != VK_SUCCESS && vk_result != VK_TIMEOUT)
 	{
-		vk_result = vkWaitForFences (graphics_device, 1, swapchain_fences + i, VK_TRUE, UINT64_MAX);
-		if (vk_result != VK_SUCCESS && vk_result != VK_TIMEOUT)
-		{
-			age_result = AGE_ERROR_GRAPHICS_WAIT_FOR_FENCES;
-			goto exit;
-		}
+		age_result = AGE_ERROR_GRAPHICS_WAIT_FOR_FENCES;
+		goto exit;
+	}
 
+	for (size_t i = 0; i < swapchain_image_count; ++i)
+	{
 		printf ("wait over for %d\n", i);
+
+		vk_result = vkGetFenceStatus (graphics_device, swapchain_fences[i]);
+		if (vk_result != VK_SUCCESS)
+		{
+			continue;
+		}
 
 		vk_result = vkResetFences (graphics_device, 1, swapchain_fences + i);
 		if (vk_result != VK_SUCCESS)
@@ -994,7 +1000,6 @@ exit: // clear function specific allocations before exit
 
 AGE_RESULT graphics_submit_present (void)
 {
-	printf ("graphics_submit_present\n");
 	AGE_RESULT age_result = AGE_SUCCESS;
 
 	size_t image_index = 0;
@@ -1068,7 +1073,7 @@ void graphics_exit (void)
 
 	if (swapchain_fences)
 	{
-		for (size_t i = 0; i < swapchain_images_count; ++i)
+		for (size_t i = 0; i < swapchain_image_count; ++i)
 		{
 			vkDestroyFence (graphics_device, swapchain_fences[i], NULL);
 		}
@@ -1093,7 +1098,7 @@ void graphics_exit (void)
 
 	if (swapchain_signal_semaphores)
 	{
-		for (size_t i = 0; i < swapchain_images_count; ++i)
+		for (size_t i = 0; i < swapchain_image_count; ++i)
 		{
 			vkDestroySemaphore (graphics_device, swapchain_signal_semaphores[i], NULL);
 		}
@@ -1103,7 +1108,7 @@ void graphics_exit (void)
 
 	if (swapchain_command_buffers)
 	{
-		vkFreeCommandBuffers (graphics_device, swapchain_command_pool, swapchain_images_count, swapchain_command_buffers);
+		vkFreeCommandBuffers (graphics_device, swapchain_command_pool, swapchain_image_count, swapchain_command_buffers);
 
 		utils_free (swapchain_command_buffers);
 	}
@@ -1120,7 +1125,7 @@ void graphics_exit (void)
 
 	if (swapchain_framebuffers)
 	{
-		for (size_t i = 0; i < swapchain_images_count; ++i)
+		for (size_t i = 0; i < swapchain_image_count; ++i)
 		{
 			if (swapchain_framebuffers[i] != VK_NULL_HANDLE)
 			{
@@ -1133,7 +1138,7 @@ void graphics_exit (void)
 
 	if (swapchain_image_views)
 	{
-		for (size_t i = 0; i < swapchain_images_count; ++i)
+		for (size_t i = 0; i < swapchain_image_count; ++i)
 		{
 			if (swapchain_image_views[i] != VK_NULL_HANDLE)
 			{

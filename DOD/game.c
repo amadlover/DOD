@@ -133,8 +133,6 @@ AGE_RESULT game_process_left_mouse_click (const size_t x, const size_t y)
     {
         goto exit;
     }
-    
-    age_result = graphics_submit_present ();
 
 exit:
     return age_result;
@@ -156,13 +154,7 @@ AGE_RESULT game_update (void)
 
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    /*AGE_RESULT age_result = graphics_update_command_buffers ();
-    if (age_result != AGE_SUCCESS)
-    {
-        goto exit;
-    }*/
-    
-    //age_result = graphics_submit_present ();
+    age_result = graphics_submit_present ();
 
 exit:
     return age_result;
