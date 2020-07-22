@@ -1,6 +1,8 @@
 #include "graphics.h"
 #include "utils.h"
 #include "error.h"
+#include "opaque_vert.h"
+#include "opaque_frag.h"
 #include <stdio.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
@@ -46,17 +48,15 @@ VkFence* swapchain_fences = NULL;
 VkBuffer vertex_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory vertex_index_memory = VK_NULL_HANDLE;
 
-VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
 VkPipeline graphics_pipeline = VK_NULL_HANDLE;
 VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
 const vec2** game_actors_positions = NULL;
 const size_t* game_actor_count = 0;
 
-float mesh_local_positions_colors[15] = { -1,0, 1,0,0, 1,0, 0,1,0, 0,1, 0,0,1 };
+float mesh_local_positions_colors[15] = { -1,0, 1,0, 0,1,  1,0,0, 0,1,0, 0,0,1 };
 size_t mesh_indices[3] = { 0,1,2 };
 size_t mesh_local_positions_colors_size = sizeof (float) * 15;
 size_t mesh_indices_size = sizeof (size_t) * 3;
@@ -904,7 +904,6 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	};
 	vk_result = vkCreateDescriptorPool (graphics_device, &descriptor_pool_create_info, NULL, &descriptor_pool);
 
-
 	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
 		0,
 		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
@@ -921,13 +920,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		&descriptor_layout_binding
 	};
 
+	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
+
 	vk_result = vkCreateDescriptorSetLayout (graphics_device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
 		goto exit;
 	}
-
 
 	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -941,6 +941,217 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	if (vk_result)
 	{
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
+		goto exit;
+	}
+
+	VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
+	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		NULL,
+		0,
+		1,
+		&descriptor_set_layout,
+		0,
+		NULL
+	};
+
+	vk_result = vkCreatePipelineLayout (graphics_device, &pipeline_layout_create_info, NULL, &graphics_pipeline_layout);
+	if (vk_result)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_PIPELINE_LAYOUT;
+		goto exit;
+	}
+
+	VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
+	VkShaderModuleCreateInfo vertex_shader_module_create_info = {
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		NULL,
+		0,
+		sizeof (opaque_vert),
+		opaque_vert
+	};
+	vk_result = vkCreateShaderModule (graphics_device, &vertex_shader_module_create_info, NULL, &vertex_shader_module);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SHADER_MODULE;
+		goto exit;
+	}
+
+	VkShaderModule fragment_shader_module = VK_NULL_HANDLE;
+	VkShaderModuleCreateInfo fragment_shader_module_create_info = {
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		NULL,
+		0,
+		sizeof (opaque_frag),
+		opaque_frag
+	};
+
+	vk_result = vkCreateShaderModule (graphics_device, &vertex_shader_module_create_info, NULL, &fragment_shader_module);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SHADER_MODULE;
+		goto exit;
+	}
+
+	VkPipelineShaderStageCreateInfo shader_stage_create_infos[2] = {
+		{
+			VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			NULL,
+			0,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			vertex_shader_module,
+			"main",
+			NULL
+		},
+		{
+			VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			NULL,
+			0,
+			VK_SHADER_STAGE_FRAGMENT_BIT,
+			fragment_shader_module,
+			"main",
+			NULL
+		}
+	};
+	VkVertexInputBindingDescription vertex_input_binding_descriptions[2] = {
+		{
+			0,
+			sizeof (float) * 2,
+			VK_VERTEX_INPUT_RATE_VERTEX
+		},
+		{
+			0,
+			sizeof (float) * 3,
+			VK_VERTEX_INPUT_RATE_VERTEX
+		}
+	};
+	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[2] = {
+		{
+			0,
+			0,
+			VK_FORMAT_R32G32_SFLOAT,
+			0
+		}, 
+		{
+			1,
+			1,
+			VK_FORMAT_R32G32B32_SFLOAT,
+			0
+		}
+	};
+
+	VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		NULL,
+		0,
+		2,
+		vertex_input_binding_descriptions,
+		2,
+		vertex_input_attribute_descriptions,
+	};
+
+	VkPipelineInputAssemblyStateCreateInfo vertex_input_assembly_state_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		NULL,
+		0,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		VK_FALSE
+	};
+
+	VkViewport viewport = {
+		0,
+		0,
+		(float)surface_capabilities.currentExtent.width,
+		(float)surface_capabilities.currentExtent.height,
+		0,
+		1
+	};
+	VkRect2D scissor = {
+		{0,0},
+		surface_capabilities.currentExtent
+	};
+	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		NULL,
+		0,
+		1,
+		&viewport,
+		1,
+		&scissor
+	};
+	
+	VkPipelineRasterizationStateCreateInfo rasterization_state_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		NULL,
+		0,
+		VK_FALSE,
+		VK_TRUE,
+		VK_POLYGON_MODE_FILL,
+		VK_CULL_MODE_BACK_BIT,
+		VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		VK_FALSE,
+		0,
+		0,
+		0,
+		1
+	};
+	
+	VkPipelineMultisampleStateCreateInfo multisample_state_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		NULL,
+		0,
+		VK_SAMPLE_COUNT_1_BIT
+	};
+	
+	VkPipelineColorBlendAttachmentState color_blend_attachment_state = {
+		VK_FALSE,
+		VK_BLEND_FACTOR_ZERO,
+		VK_BLEND_FACTOR_ZERO,
+		VK_BLEND_OP_ADD,
+		VK_BLEND_FACTOR_ZERO,
+		VK_BLEND_FACTOR_ZERO,
+		VK_BLEND_OP_ADD,
+		VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+	};
+
+	VkPipelineColorBlendStateCreateInfo color_blend_state_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		NULL,
+		0,
+		VK_FALSE,
+		VK_LOGIC_OP_NO_OP,
+		1,
+		&color_blend_attachment_state,
+		{1,1,1,1}
+	};
+
+	VkGraphicsPipelineCreateInfo graphics_pipeline_create_info = {
+		VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		NULL,
+		0,
+		2,
+		shader_stage_create_infos,
+		&vertex_input_state_create_info,
+		&vertex_input_assembly_state_create_info,
+		NULL,
+		&viewport_state_create_info,
+		&rasterization_state_create_info,
+		&multisample_state_create_info,
+		NULL,
+		&color_blend_state_create_info,
+		NULL,
+		graphics_pipeline_layout,
+		render_pass,
+		0,
+		VK_NULL_HANDLE,
+		0
+	};
+
+	vk_result = vkCreateGraphicsPipelines (graphics_device, VK_NULL_HANDLE, 1, &graphics_pipeline_create_info, NULL, &graphics_pipeline);
+	if (vk_result)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_GRAPHICS_PIPELINE;
+		goto exit;
 	}
 
 exit: // clear function specific allocations before exit
@@ -973,6 +1184,9 @@ exit: // clear function specific allocations before exit
 
 	vkFreeCommandBuffers (graphics_device, transfer_command_pool, 1, &copy_command_buffer);
 	vkDestroyCommandPool (graphics_device, transfer_command_pool, NULL);
+
+	vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
+	vkDestroyPipelineLayout (graphics_device, graphics_pipeline_layout, NULL);
 
 	return age_result;
 }
@@ -1125,11 +1339,6 @@ void graphics_exit (void)
 	if (descriptor_set != VK_NULL_HANDLE)
 	{
 		vkFreeDescriptorSets (graphics_device, descriptor_pool, 1, &descriptor_set);
-	}
-
-	if (descriptor_set_layout != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
 	}
 
 	if (descriptor_pool != VK_NULL_HANDLE)
