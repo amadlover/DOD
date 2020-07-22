@@ -89,7 +89,7 @@ AGE_RESULT log_error (const AGE_RESULT result)
 		printf ("Graphics Error: Create Descriptor Pool\n");
 		break;
 
-	case AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SET:
+	case AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS:
 		printf ("Graphics Error: Allocate Descriptor Set\n");
 		break;
 

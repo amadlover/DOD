@@ -48,13 +48,15 @@ VkDeviceMemory vertex_index_memory = VK_NULL_HANDLE;
 
 VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
 VkPipeline graphics_pipeline = VK_NULL_HANDLE;
-VkDescriptorSet* descriptor_sets = NULL;
+VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
+VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
 const vec2** game_actors_positions = NULL;
 const size_t* game_actor_count = 0;
 
-float mesh_local_positions_colors[15] = { -1, 0, 1,0,0,1, 0, 0,1,0, 0, 1,0,0,1 };
+float mesh_local_positions_colors[15] = { -1,0, 1,0,0, 1,0, 0,1,0, 0,1, 0,0,1 };
 size_t mesh_indices[3] = { 0,1,2 };
 size_t mesh_local_positions_colors_size = sizeof (float) * 15;
 size_t mesh_indices_size = sizeof (size_t) * 3;
@@ -116,6 +118,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 #else
 	is_validation_needed = false;
 #endif
+
+	game_actor_count = actor_count;
+	game_actors_positions = actor_positions;
+
 	char** requested_instance_layers = NULL;
 	size_t requested_instance_layer_count = 0;
 
@@ -694,7 +700,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		NULL,
 		0,
-		mesh_local_positions_colors_size + mesh_indices_size,
+		(VkDeviceSize)mesh_local_positions_colors_size + (VkDeviceSize)mesh_indices_size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,
 		0,
@@ -883,14 +889,59 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	vkQueueWaitIdle (transfer_queue);
 
-	game_actor_count = actor_count;
-	game_actors_positions = actor_positions;
+	VkDescriptorPoolSize descriptor_pool_size = {
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		1
+	};
 
-	/*age_result = graphics_update_command_buffers ();
-	if (age_result != AGE_SUCCESS)
+	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		NULL,
+		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+		1,
+		1,
+		&descriptor_pool_size
+	};
+	vk_result = vkCreateDescriptorPool (graphics_device, &descriptor_pool_create_info, NULL, &descriptor_pool);
+
+
+	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
+		0,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		1,
+		VK_SHADER_STAGE_VERTEX_BIT,
+		NULL
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		NULL,
+		0,
+		1,
+		&descriptor_layout_binding
+	};
+
+	vk_result = vkCreateDescriptorSetLayout (graphics_device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
+	if (vk_result != VK_SUCCESS)
 	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
 		goto exit;
-	}*/
+	}
+
+
+	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		NULL,
+		descriptor_pool,
+		1,
+		&descriptor_set_layout
+	};
+	
+	vk_result = vkAllocateDescriptorSets (graphics_device, &descriptor_set_allocate_info, &descriptor_set);
+	if (vk_result)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
+	}
 
 exit: // clear function specific allocations before exit
 	for (size_t i = 0; i < requested_instance_layer_count; ++i)
@@ -1070,6 +1121,21 @@ exit:
 void graphics_exit (void)
 {
 	vkQueueWaitIdle (graphics_queue);
+
+	if (descriptor_set != VK_NULL_HANDLE)
+	{
+		vkFreeDescriptorSets (graphics_device, descriptor_pool, 1, &descriptor_set);
+	}
+
+	if (descriptor_set_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
+	}
+
+	if (descriptor_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorPool (graphics_device, descriptor_pool, NULL);
+	}
 
 	if (swapchain_fences)
 	{
