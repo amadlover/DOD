@@ -61,6 +61,13 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     freopen ("CONOUT$", "w", stdout);
     printf ("%s %s %d Hello Console\n", __FILE__, __FUNCTION__, __LINE__);
 
+    HANDLE con_hnd = GetStdHandle (STD_OUTPUT_HANDLE);
+    CONSOLE_FONT_INFOEX font = { sizeof (font) };
+    GetCurrentConsoleFontEx (con_hnd, FALSE, &font);
+    font.dwFontSize.X = 0;
+    font.dwFontSize.Y = 10;
+    SetCurrentConsoleFontEx (con_hnd, FALSE, &font);
+
     WNDCLASS wc = {0};
     wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     wc.lpfnWndProc = WindowProc;

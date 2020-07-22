@@ -141,7 +141,7 @@ AGE_RESULT log_error (const AGE_RESULT result)
 		printf ("Graphics Error: Create Fence\n");
 		break;
 
-	case AGE_ERROR_GRAPHICS_RESET_FENCE:
+	case AGE_ERROR_GRAPHICS_RESET_FENCES:
 		printf ("Graphics Error: Reset Fence\n");
 		break;
 
