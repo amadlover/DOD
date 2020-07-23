@@ -62,6 +62,7 @@ size_t background_positions_size = sizeof (float) * 8;
 size_t background_colors_size = sizeof (float) * 12;
 size_t background_indices[6] = { 0,1,2, 0,2,3 };
 size_t background_indices_size = sizeof (background_indices);
+size_t background_index_count = 6;
 
 float actor_local_positions_colors[15] = { -1,0, 1,0, 0,1,  1,0,0, 0,1,0, 0,0,1 };
 size_t actor_local_positions_size = sizeof (float) * 6;
@@ -111,7 +112,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 {
 	if (callback_data)
 	{
-		printf ("Debug Callback Message: %s\n", callback_data->pMessage);
+		printf ("Debug Callback Message: %s\n\n", callback_data->pMessage);
 	}
 
 	return false;
@@ -156,8 +157,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 					requested_instance_layers = (char**)utils_realloc_zero (requested_instance_layers, sizeof (char*) * requested_instance_layer_count, sizeof (char*) * (requested_instance_layer_count + 1));
 				}
 
-				requested_instance_layers[requested_instance_layer_count] = (char*)utils_calloc (strlen ("VK_LAYER_LUNARG_standard_validation") + 1, sizeof (char));
-				strcpy (requested_instance_layers[requested_instance_layer_count], "VK_LAYER_LUNARG_standard_validation");
+				requested_instance_layers[requested_instance_layer_count] = (char*)utils_calloc (strlen ("VK_LAYER_KHRONOS_validation") + 1, sizeof (char));
+				strcpy (requested_instance_layers[requested_instance_layer_count], "VK_LAYER_KHRONOS_validation");
 				++requested_instance_layer_count;
 
 				break;
@@ -228,38 +229,92 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	utils_free (extension_properties);
 
-	VkApplicationInfo application_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO, NULL, "Asteroids", VK_MAKE_VERSION (1, 0, 0), "AGE", VK_MAKE_VERSION (1, 0, 0), VK_API_VERSION_1_2 };
-	VkInstanceCreateInfo instance_create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, NULL, 0, &application_info, requested_instance_layer_count, requested_instance_layers, requested_instance_extension_count, requested_instance_extensions };
-
-	AGE_RESULT age_result = AGE_SUCCESS;
-	VkResult vk_result = vkCreateInstance (&instance_create_info, NULL, &instance);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_INSTANCE;
-		goto exit;
-	}
-
-	VkDebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info = {
-		VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-		NULL,
-		0,
-		/*VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |*/
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-		VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
-		debug_messenger_callback,
-		NULL
+	VkApplicationInfo application_info = { 
+		VK_STRUCTURE_TYPE_APPLICATION_INFO, 
+		NULL, 
+		"Asteroids", 
+		VK_MAKE_VERSION (1, 0, 0), 
+		"AGE", 
+		VK_MAKE_VERSION (1, 0, 0), 
+		VK_API_VERSION_1_2 
 	};
+	
+	AGE_RESULT age_result = AGE_SUCCESS;
+	VkResult vk_result = VK_SUCCESS;
 
-	vk_result = create_debug_utils_messenger (instance, &debug_utils_messenger_create_info, NULL, &debug_utils_messenger);
-
-	if (vk_result != VK_SUCCESS)
+	if (is_validation_needed)
 	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_DEBUG_UTILS_MESSENGER;
-		goto exit;
+		VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
+		VkValidationFeaturesEXT features = {
+			VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+			NULL,
+			1,
+			enables,
+			0,
+			NULL
+		};
+
+		VkInstanceCreateInfo instance_create_info = {
+			VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+			&features,
+			0,
+			&application_info,
+			requested_instance_layer_count,
+			requested_instance_layers,
+			requested_instance_extension_count,
+			requested_instance_extensions
+		};
+
+		vk_result = vkCreateInstance (&instance_create_info, NULL, &instance);
+		if (vk_result != VK_SUCCESS)
+		{
+			age_result = AGE_ERROR_GRAPHICS_CREATE_INSTANCE;
+			goto exit;
+		}
+
+		VkDebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info = {
+			VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+			NULL,
+			0,
+			/*VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |*/
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+			VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
+			debug_messenger_callback,
+			NULL
+		};
+
+		vk_result = create_debug_utils_messenger (instance, &debug_utils_messenger_create_info, NULL, &debug_utils_messenger);
+
+		if (vk_result != VK_SUCCESS)
+		{
+			age_result = AGE_ERROR_GRAPHICS_CREATE_DEBUG_UTILS_MESSENGER;
+			goto exit;
+		}
+	}
+	else
+	{
+		VkInstanceCreateInfo instance_create_info = {
+			VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+			NULL,
+			0,
+			&application_info,
+			requested_instance_layer_count,
+			requested_instance_layers,
+			requested_instance_extension_count,
+			requested_instance_extensions
+		};
+
+		AGE_RESULT age_result = AGE_SUCCESS;
+		VkResult vk_result = vkCreateInstance (&instance_create_info, NULL, &instance);
+		if (vk_result != VK_SUCCESS)
+		{
+			age_result = AGE_ERROR_GRAPHICS_CREATE_INSTANCE;
+			goto exit;
+		}
 	}
 
 	size_t physical_device_count = 0;
@@ -429,7 +484,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	utils_free (extension_properties);
 
-	float priorities = 1.f;
+	float priorities[3] = { 1.f, 1.f, 1.f };
 
 	VkDeviceQueueCreateInfo queue_create_infos[3] = { 0,0,0 };
 	size_t unique_queue_family_indices[3] = { 0,0,0 };
@@ -459,7 +514,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	{
 		queue_create_infos[ui].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queue_create_infos[ui].pNext = NULL;
-		queue_create_infos[ui].pQueuePriorities = &priorities;
+		queue_create_infos[ui].pQueuePriorities = priorities;
 		queue_create_infos[ui].queueCount = unique_queue_count[ui];
 		queue_create_infos[ui].queueFamilyIndex = unique_queue_family_indices[ui];
 		queue_create_infos[ui].flags = 0;
@@ -633,7 +688,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	VkCommandPoolCreateInfo command_pool_create_info = {
 		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		NULL,
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+		0,//VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+		graphics_queue_family_index
 	};
 
 	vk_result = vkCreateCommandPool (graphics_device, &command_pool_create_info, NULL, &swapchain_command_pool);
@@ -770,7 +826,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		graphics_device, 
 		staging_vertex_index_memory, 
 		0, 
-		actor_local_positions_size + actor_local_colors_size, 
+		(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size,
 		0, 
 		&data
 	);
@@ -786,7 +842,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	vk_result = vkMapMemory (
 		graphics_device, 
 		staging_vertex_index_memory, 
-		actor_local_positions_size + actor_local_colors_size, 
+		(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size,
 		actor_indices_size, 
 		0, 
 		&data
@@ -803,8 +859,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	vk_result = vkMapMemory (
 		graphics_device, 
 		staging_vertex_index_memory, 
-		actor_local_positions_size + actor_local_colors_size + actor_indices_size, 
-		background_positions_size + background_colors_size, 
+		(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size + (VkDeviceSize)actor_indices_size,
+		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
 		0, 
 		&data
 	);
@@ -820,7 +876,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	vk_result = vkMapMemory (
 		graphics_device,
 		staging_vertex_index_memory, 
-		actor_local_positions_size + actor_indices_size + background_positions_size + background_colors_size, 
+		(VkDeviceSize)actor_local_positions_size + 
+		(VkDeviceSize)actor_indices_size + 
+		(VkDeviceSize)background_positions_size + 
+		(VkDeviceSize)background_colors_size,
 		background_indices_size, 
 		0, 
 		&data
@@ -878,7 +937,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	VkCommandPoolCreateInfo transfer_command_pool_create_info = {
 		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		NULL,
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
 		transfer_queue_family_index
 	};
 	
@@ -1136,9 +1195,9 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	VkViewport viewport = {
 		0,
-		0,
-		(float)surface_capabilities.currentExtent.width,
 		(float)surface_capabilities.currentExtent.height,
+		(float)surface_capabilities.currentExtent.width,
+		-(float)surface_capabilities.currentExtent.height,
 		0,
 		1
 	};
@@ -1164,7 +1223,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		VK_TRUE,
 		VK_POLYGON_MODE_FILL,
 		VK_CULL_MODE_BACK_BIT,
-		VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		VK_FRONT_FACE_CLOCKWISE,
 		VK_FALSE,
 		0,
 		0,
@@ -1308,7 +1367,7 @@ AGE_RESULT graphics_update_command_buffers (void)
 	VkCommandBufferBeginInfo command_buffer_begin_info = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		NULL,
-		VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+		0,//VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
 		NULL
 	};
 
@@ -1322,28 +1381,15 @@ AGE_RESULT graphics_update_command_buffers (void)
 		NULL
 	};
 
-	/*vk_result = vkWaitForFences (graphics_device, swapchain_image_count, swapchain_fences, VK_FALSE, UINT64_MAX);
-	if (vk_result != VK_SUCCESS && vk_result != VK_TIMEOUT)
+	vk_result = vkResetCommandPool (graphics_device, swapchain_command_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+	if (vk_result != VK_SUCCESS)
 	{
-		age_result = AGE_ERROR_GRAPHICS_WAIT_FOR_FENCES;
+		age_result = AGE_ERROR_GRAPHICS_RESET_COMMAND_POOL;
 		goto exit;
-	}*/
+	}
 
 	for (size_t i = 0; i < swapchain_image_count; ++i)
 	{
-		/*vk_result = vkGetFenceStatus (graphics_device, swapchain_fences[i]);
-		if (vk_result != VK_SUCCESS)
-		{
-			continue;
-		}
-
-		vk_result = vkResetFences (graphics_device, 1, swapchain_fences + i);
-		if (vk_result != VK_SUCCESS)
-		{
-			age_result = AGE_ERROR_GRAPHICS_RESET_FENCES;
-			goto exit;
-		}*/
-
 		vk_result = vkBeginCommandBuffer (swapchain_command_buffers[i], &command_buffer_begin_info);
 		if (vk_result != VK_SUCCESS)
 		{
@@ -1361,16 +1407,16 @@ AGE_RESULT graphics_update_command_buffers (void)
 
 		VkDeviceSize offsets[6] = {
 			0, 
-			actor_local_positions_size,
-			actor_local_positions_size + actor_local_colors_size, 
-			actor_local_positions_size + actor_local_colors_size + actor_indices_size,
-			actor_local_positions_size + actor_local_colors_size + actor_indices_size + background_positions_size,
-			actor_local_positions_size + actor_local_colors_size + actor_indices_size + background_positions_size + background_colors_size
+			(VkDeviceSize)actor_local_positions_size,
+			(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size, 
+			(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size + (VkDeviceSize)actor_indices_size,
+			(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size + (VkDeviceSize)actor_indices_size + (VkDeviceSize)background_positions_size,
+			(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size + (VkDeviceSize)actor_indices_size + (VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size
 		};
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &offsets[3]);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &offsets[4]);
 		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, offsets[5], VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed (swapchain_command_buffers[i], 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed (swapchain_command_buffers[i], background_index_count, 1, 0, 0, 0);
 
 		/*for (size_t a = 0; a < *game_actor_count; ++a)
 		{
@@ -1583,6 +1629,8 @@ void graphics_exit (void)
 	{
 		vkDestroySwapchainKHR (graphics_device, swapchain, NULL);
 	}
+
+	utils_free (swapchain_images);
 
 	if (graphics_device != VK_NULL_HANDLE)
 	{

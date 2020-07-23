@@ -65,7 +65,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     CONSOLE_FONT_INFOEX font = { sizeof (font) };
     GetCurrentConsoleFontEx (con_hnd, FALSE, &font);
     font.dwFontSize.X = 0;
-    font.dwFontSize.Y = 10;
+    font.dwFontSize.Y = 14;
     SetCurrentConsoleFontEx (con_hnd, FALSE, &font);
 
     WNDCLASS wc = {0};

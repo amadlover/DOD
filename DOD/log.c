@@ -117,6 +117,10 @@ AGE_RESULT log_error (const AGE_RESULT result)
 		printf ("Graphics Error: Create Command Pool\n");
 		break;
 
+	case AGE_ERROR_GRAPHICS_RESET_COMMAND_POOL:
+		printf ("Graphics Error: Reset Command Pool\n");
+		break;
+
 	case AGE_ERROR_GRAPHICS_ALLOCATE_COMMAND_BUFFER:
 		printf ("Graphics Error: Allocate Command buffer\n");
 		break;
