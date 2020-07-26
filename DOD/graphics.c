@@ -54,7 +54,7 @@ VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
-const vec2** game_actors_positions = NULL;
+const vec2** game_actors_transforms = NULL;
 const size_t* game_actor_count = 0;
 
 float background_positions[12] = { -0.9f,-0.9f,0.9f, 0.9f,-0.9f,0.9f, 0.9f,0.9f,0.9f, -0.9f,0.9f,0.9f };
@@ -120,7 +120,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 	return false;
 }
 
-AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_positions, const size_t* actor_count)
+AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_transforms, const size_t* actor_count)
 {
 #ifdef _DEBUG 
 	is_validation_needed = true;
@@ -131,7 +131,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 #endif
 
 	game_actor_count = actor_count;
-	game_actors_positions = actor_positions;
+	game_actors_transforms = actor_transforms;
 
 	char** requested_instance_layers = NULL;
 	size_t requested_instance_layer_count = 0;
@@ -1702,6 +1702,6 @@ void graphics_check_data_from_game (void)
 	printf ("GRAPHICS\n");
 	for (size_t i = 0; i < *game_actor_count; ++i)
 	{
-		printf ("Positions n = %d, x = %f, y = %f\n", i, (*game_actors_positions + i)->x, (*game_actors_positions + i)->y);
+		printf ("Positions n = %d, x = %f, y = %f\n", i, (*game_actors_transforms + i)->x, (*game_actors_transforms + i)->y);
 	}
 }

@@ -67,7 +67,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
         }
         else
         {
-            printf ("Could not realloc %d bytes for game_actors_positions\n", sizeof (vec2) * memory_reserved_for_actors);
+            printf ("Could not realloc %d bytes for game_actors_transforms\n", sizeof (vec2) * memory_reserved_for_actors);
         }
         
         temp = (vec2*)realloc (actors_directions, sizeof (vec2) * memory_reserved_for_actors);
