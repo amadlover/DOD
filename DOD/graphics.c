@@ -57,16 +57,18 @@ size_t descriptor_set_count = 0;
 const vec2** game_actors_positions = NULL;
 const size_t* game_actor_count = 0;
 
-float background_positions_colors[20] = { -0.9f,-0.9f, 0.9f,-0.9f, 0.9f,0.9f, -0.9f,0.9f, 1,0,0, 0,1,0, 0,0,1, 1,1,1};
-size_t background_positions_size = sizeof (float) * 8;
-size_t background_colors_size = sizeof (float) * 12;
+float background_positions[12] = { -0.9f,-0.9f,0.9f, 0.9f,-0.9f,0.9f, 0.9f,0.9f,0.9f, -0.9f,0.9f,0.9f };
+float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
+size_t background_positions_size = sizeof (background_positions);
+size_t background_colors_size = sizeof (background_colors);
 size_t background_indices[6] = { 0,1,2, 0,2,3 };
 size_t background_indices_size = sizeof (background_indices);
 size_t background_index_count = 6;
 
-float actor_local_positions_colors[15] = { -1,0, 1,0, 0,1,  1,0,0, 0,1,0, 0,0,1 };
-size_t actor_local_positions_size = sizeof (float) * 6;
-size_t actor_local_colors_size = sizeof (float) * 9;
+float actor_positions[9] = { -1,0,0.5f, 1,0,0.5f, 0,1,0.5f };
+float actor_colors[9] = {1,0,0, 0,1,0, 0,0,1 };
+size_t actor_positions_size = sizeof (actor_positions);
+size_t actor_colors_size = sizeof (actor_colors);
 size_t actor_indices[3] = { 0,1,2 };
 size_t actor_indices_size = sizeof (actor_indices);
 size_t actor_index_count = 3;
@@ -768,12 +770,12 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		NULL,
 		0,
-		(VkDeviceSize)actor_local_positions_size + 
-		(VkDeviceSize)actor_local_colors_size + 
-		(VkDeviceSize)actor_indices_size + 
 		(VkDeviceSize)background_positions_size +
 		(VkDeviceSize)background_colors_size +
-		(VkDeviceSize)background_indices_size,
+		(VkDeviceSize)background_indices_size +
+		(VkDeviceSize)actor_positions_size +
+		(VkDeviceSize)actor_colors_size +
+		(VkDeviceSize)actor_indices_size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,
 		0,
@@ -830,7 +832,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		graphics_device, 
 		staging_vertex_index_memory,
 		0,
-		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
+		(VkDeviceSize)background_positions_size,
 		0, 
 		&data
 	);
@@ -840,11 +842,28 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	memcpy (data, background_positions_colors, background_positions_size + background_colors_size);
+	memcpy (data, background_positions, background_positions_size);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
 		graphics_device,
+		staging_vertex_index_memory,
+		(VkDeviceSize)background_positions_size,
+		(VkDeviceSize)background_colors_size,
+		0, 
+		&data
+	);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, background_colors, background_colors_size);
+	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
+
+	vk_result = vkMapMemory (
+		graphics_device, 
 		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
 		(VkDeviceSize)background_indices_size,
@@ -861,10 +880,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
-		graphics_device, 
+		graphics_device,
 		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size,
-		(VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size,
+		(VkDeviceSize)actor_positions_size,
 		0, 
 		&data
 	);
@@ -874,15 +893,32 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		goto exit;
 	}
 
-	memcpy (data, actor_local_positions_colors, actor_local_positions_size + actor_local_colors_size);
+	memcpy (data, actor_positions, actor_positions_size);
+	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
+	
+	vk_result = vkMapMemory (
+		graphics_device,
+		staging_vertex_index_memory,
+		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size,
+		(VkDeviceSize)actor_colors_size,
+		0,
+		&data
+	);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, actor_colors, actor_colors_size);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
 		graphics_device,
 		staging_vertex_index_memory,
-		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_local_positions_size + (VkDeviceSize)actor_local_colors_size,
+		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size + (VkDeviceSize)actor_colors_size,
 		(VkDeviceSize)actor_indices_size,
-		0, 
+		0,
 		&data
 	);
 	if (vk_result != VK_SUCCESS)
@@ -893,7 +929,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 
 	memcpy (data, actor_indices, actor_indices_size);
 	vkUnmapMemory (graphics_device, staging_vertex_index_memory);
-		
+
 	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
 	vk_result = vkCreateBuffer (graphics_device, &vertex_index_buffer_create_info, NULL, &vertex_index_buffer);
@@ -981,8 +1017,8 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	VkBufferCopy buffer_copy = { 0, 0, (VkDeviceSize)background_positions_size + 
 										(VkDeviceSize)background_colors_size + 
 										(VkDeviceSize)background_indices_size +
-										(VkDeviceSize)actor_local_positions_size +
-										(VkDeviceSize)actor_local_colors_size +
+										(VkDeviceSize)actor_positions_size +
+										(VkDeviceSize)actor_colors_size +
 										(VkDeviceSize)actor_indices_size 
 								};
 	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_buffer, vertex_index_buffer, 1, &buffer_copy);
@@ -1158,7 +1194,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 	VkVertexInputBindingDescription vertex_input_binding_descriptions[2] = {
 		{
 			0,
-			sizeof (float) * 2,
+			sizeof (float) * 3,
 			VK_VERTEX_INPUT_RATE_VERTEX
 		},
 		{
@@ -1171,7 +1207,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_p
 		{
 			0,
 			0,
-			VK_FORMAT_R32G32_SFLOAT,
+			VK_FORMAT_R32G32B32_SFLOAT,
 			0
 		}, 
 		{
@@ -1415,8 +1451,8 @@ AGE_RESULT graphics_update_command_buffers (void)
 			(VkDeviceSize)background_positions_size,
 			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
 			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size,
-			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_local_positions_size,
-			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_local_positions_size + (VkDeviceSize) actor_local_colors_size
+			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size,
+			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size + (VkDeviceSize) actor_colors_size
 		};
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &offsets[0]);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &offsets[1]);

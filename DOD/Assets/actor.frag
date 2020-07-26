@@ -8,5 +8,5 @@ layout (location = 0) out vec4 out_color;
 
 void main ()
 {
-    out_color = vec2 (gl_FragCoords.xy, 1, 0);
+    out_color = vec4(in_color, 1);
 }    
