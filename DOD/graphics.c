@@ -54,8 +54,15 @@ VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
-const vec2** game_actors_transforms = NULL;
-const size_t* game_actor_count = 0;
+const vec2** graphics_actors_transforms = NULL;
+const size_t* graphics_actor_count = 0;
+const size_t* graphics_current_max_actor_count = 0;
+const size_t* graphics_ACTOR_BATCH_SIZE = 0;
+
+VkBuffer transforms_buffer = VK_NULL_HANDLE;
+VkDeviceMemory transforms_buffer_memory = VK_NULL_HANDLE;
+
+size_t transforms_offset = 0;
 
 float background_positions[12] = { -0.9f,-0.9f,0.9f, 0.9f,-0.9f,0.9f, 0.9f,0.9f,0.9f, -0.9f,0.9f,0.9f };
 float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
@@ -120,7 +127,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 	return false;
 }
 
-AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_transforms, const size_t* actor_count)
+AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_actor_transforms, const size_t* game_actor_count, const size_t* game_current_max_actor_count, const size_t* game_ACTOR_BATCH_SIZE)
 {
 #ifdef _DEBUG 
 	is_validation_needed = true;
@@ -130,8 +137,10 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** actor_t
 	is_validation_needed = false;
 #endif
 
-	game_actor_count = actor_count;
-	game_actors_transforms = actor_transforms;
+	graphics_current_max_actor_count = game_current_max_actor_count;
+	graphics_actor_count = game_actor_count;
+	graphics_actors_transforms = game_actor_transforms;
+	graphics_ACTOR_BATCH_SIZE = game_ACTOR_BATCH_SIZE;
 
 	char** requested_instance_layers = NULL;
 	size_t requested_instance_layer_count = 0;
@@ -1401,6 +1410,39 @@ exit: // clear function specific allocations before exit
 	return age_result;
 }
 
+AGE_RESULT graphics_update_transforms_buffer (void)
+{
+	AGE_RESULT age_result = AGE_SUCCESS;
+	VkResult vk_result = VK_SUCCESS;
+
+	size_t raw_size_per_transform = sizeof (vec2);
+	size_t aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
+
+	size_t size = aligned_size_per_transform * (*graphics_current_max_actor_count);
+
+	VkBufferCreateInfo transforms_buffer_create_info = {
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		NULL,
+		0,
+		size,
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_SHARING_MODE_EXCLUSIVE,
+		0,
+		NULL
+	};
+
+	vk_result = vkCreateBuffer (graphics_device, &transforms_buffer_create_info, NULL, &transforms_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
+		goto exit;
+	}
+
+exit: // clean up allocations made by the function
+
+	return age_result;
+}
+
 AGE_RESULT graphics_update_command_buffers (void)
 {
 	printf ("graphics_update_command_buffers\n");
@@ -1608,6 +1650,15 @@ void graphics_exit (void)
 		vkFreeMemory (graphics_device, vertex_index_memory, NULL);
 	}
 
+	if (transforms_buffer != VK_NULL_HANDLE) {
+		vkDestroyBuffer (graphics_device, transforms_buffer, NULL);
+	}
+
+	if (transforms_buffer_memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory (graphics_device, transforms_buffer_memory, NULL);
+	}
+
 	if (wait_semaphore != VK_NULL_HANDLE)
 	{
 		vkDestroySemaphore (graphics_device, wait_semaphore, NULL);
@@ -1700,8 +1751,10 @@ void graphics_exit (void)
 void graphics_check_data_from_game (void)
 {
 	printf ("GRAPHICS\n");
-	for (size_t i = 0; i < *game_actor_count; ++i)
+	for (size_t i = 0; i < *graphics_actor_count; ++i)
 	{
-		printf ("Positions n = %d, x = %f, y = %f\n", i, (*game_actors_transforms + i)->x, (*game_actors_transforms + i)->y);
+		printf ("Positions n = %d, x = %f, y = %f\n", i, (*graphics_actors_transforms + i)->x, (*graphics_actors_transforms + i)->y);
 	}
+
+	printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", *graphics_current_max_actor_count, *graphics_actor_count, *graphics_ACTOR_BATCH_SIZE);
 }
