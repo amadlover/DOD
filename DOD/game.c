@@ -28,7 +28,7 @@ vec2* game_actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 
 size_t game_current_max_actor_count = 0;
 size_t game_actor_count = 0;
-const size_t game_ACTOR_BATCH_SIZE = 5;
+const size_t game_ACTOR_BATCH_SIZE = 50;
 
 AGE_RESULT  game_reserve_memory_for_actors ()
 {
@@ -40,7 +40,7 @@ AGE_RESULT  game_reserve_memory_for_actors ()
     game_actors_directions = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
     game_actors_rotations = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
 
-    age_result = graphics_update_transforms_buffer ();
+    age_result = graphics_create_transforms_buffer ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -80,7 +80,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
 
     if (game_actor_count == game_current_max_actor_count)
     {
-        game_current_max_actor_count += 5;
+        game_current_max_actor_count += game_ACTOR_BATCH_SIZE;
 
         vec2* temp = (vec2*)realloc (game_actors_positions, sizeof (vec2) * game_current_max_actor_count);
         if (temp != NULL)
@@ -114,13 +114,13 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
             printf ("Could not realloc %d bytes for actor_rotations\n", sizeof (vec2) * game_current_max_actor_count);
         }
 
-        age_result = graphics_update_transforms_buffer ();
+        age_result = graphics_create_transforms_buffer ();
         if (age_result != AGE_SUCCESS)
         {
             goto exit;
         }
     }
-    
+
     game_actors_positions[game_actor_count].x = ((float)x / (float)640) * 200.f - 100.f;
     game_actors_positions[game_actor_count].y = ((float)y / (float)480) * 200.f - 100.f;
 

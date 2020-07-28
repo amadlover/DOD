@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.h"
+
 #include <stdint.h>
 #include <Windows.h>
 

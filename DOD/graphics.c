@@ -62,7 +62,10 @@ const size_t* graphics_ACTOR_BATCH_SIZE = 0;
 VkBuffer transforms_buffer = VK_NULL_HANDLE;
 VkDeviceMemory transforms_buffer_memory = VK_NULL_HANDLE;
 
-size_t transforms_offset = 0;
+size_t aligned_size_per_transform = 0;
+size_t total_transforms_size = 0;
+
+void* transforms_data = NULL;
 
 float background_positions[12] = { -0.9f,-0.9f,0.9f, 0.9f,-0.9f,0.9f, 0.9f,0.9f,0.9f, -0.9f,0.9f,0.9f };
 float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
@@ -1410,21 +1413,21 @@ exit: // clear function specific allocations before exit
 	return age_result;
 }
 
-AGE_RESULT graphics_update_transforms_buffer (void)
+AGE_RESULT graphics_create_transforms_buffer (void)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 
 	size_t raw_size_per_transform = sizeof (vec2);
-	size_t aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
+	aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
 
-	size_t size = aligned_size_per_transform * (*graphics_current_max_actor_count);
+	total_transforms_size = aligned_size_per_transform * (*graphics_ACTOR_BATCH_SIZE);
 
 	VkBufferCreateInfo transforms_buffer_create_info = {
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		NULL,
 		0,
-		size,
+		total_transforms_size,
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,
 		0,
@@ -1437,6 +1440,44 @@ AGE_RESULT graphics_update_transforms_buffer (void)
 		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
 		goto exit;
 	}
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements (graphics_device, transforms_buffer, &memory_requirements);
+
+	uint32_t required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	uint32_t required_memory_type_index = 0;
+
+	for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
+	{
+		if (memory_requirements.memoryTypeBits & (1 << i) && required_memory_types & physical_device_memory_properties.memoryTypes[i].propertyFlags)
+		{
+			required_memory_type_index = i;
+			break;
+		}
+	}
+
+	VkMemoryAllocateInfo memory_allocate_info = {
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		NULL,
+		memory_requirements.size,
+		required_memory_type_index
+	};
+
+	vk_result = vkAllocateMemory (graphics_device, &memory_allocate_info, NULL, &transforms_buffer_memory);
+	if (vk_result != VK_SUCCESS) 
+	{
+		age_result = AGE_ERROR_SYSTEM_ALLOCATE_MEMORY;
+		goto exit;
+	}
+
+	vk_result = vkBindBufferMemory (graphics_device, transforms_buffer, transforms_buffer_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
+		goto exit;
+	}
+
+	vkMapMemory (graphics_device, transforms_buffer_memory, 0, memory_requirements.size, 0, &transforms_data);
 
 exit: // clean up allocations made by the function
 
@@ -1609,6 +1650,8 @@ exit:
 void graphics_exit (void)
 {
 	vkQueueWaitIdle (graphics_queue);
+
+	vkUnmapMemory (graphics_device, transforms_buffer_memory);
 
 	if (descriptor_set != VK_NULL_HANDLE)
 	{
