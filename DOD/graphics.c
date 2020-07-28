@@ -54,7 +54,7 @@ VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
-const vec2** graphics_actors_transforms = NULL;
+const vec2** graphics_actors_positions = NULL;
 const size_t* graphics_actor_count = 0;
 const size_t* graphics_current_max_actor_count = 0;
 const size_t* graphics_ACTOR_BATCH_SIZE = 0;
@@ -130,7 +130,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 	return false;
 }
 
-AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_actor_transforms, const size_t* game_actor_count, const size_t* game_current_max_actor_count, const size_t* game_ACTOR_BATCH_SIZE)
+AGE_RESULT graphics_common_graphics_init (
+	HINSTANCE h_instance, 
+	HWND h_wnd,
+	const vec2** game_actor_positions, 
+	const size_t* game_actor_count, 
+	const size_t* game_current_max_actor_count, 
+	const size_t* game_ACTOR_BATCH_SIZE
+)
 {
 #ifdef _DEBUG 
 	is_validation_needed = true;
@@ -142,7 +149,7 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_ac
 
 	graphics_current_max_actor_count = game_current_max_actor_count;
 	graphics_actor_count = game_actor_count;
-	graphics_actors_transforms = game_actor_transforms;
+	graphics_actors_positions = game_actor_positions;
 	graphics_ACTOR_BATCH_SIZE = game_ACTOR_BATCH_SIZE;
 
 	char** requested_instance_layers = NULL;
@@ -625,6 +632,40 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_ac
 	vkGetDeviceQueue (graphics_device, graphics_queue_family_index, graphics_queue_index, &graphics_queue);
 	vkGetDeviceQueue (graphics_device, compute_queue_family_index, compute_queue_index, &compute_queue);
 	vkGetDeviceQueue (graphics_device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
+
+exit: // clean up allocation made within the function
+
+	for (size_t i = 0; i < requested_instance_layer_count; ++i)
+	{
+		utils_free (requested_instance_layers[i]);
+	}
+	utils_free (requested_instance_layers);
+
+	for (size_t i = 0; i < requested_instance_extension_count; ++i)
+	{
+		utils_free (requested_instance_extensions[i]);
+	}
+	utils_free (requested_instance_extensions);
+
+	utils_free (physical_devices);
+	utils_free (queue_family_properties);
+
+	utils_free (surface_formats);
+	utils_free (present_modes);
+
+	for (size_t i = 0; i < requested_device_extension_count; ++i)
+	{
+		utils_free (requested_device_extensions[i]);
+	}
+	utils_free (requested_device_extensions);
+
+	return age_result;
+}
+
+AGE_RESULT graphics_init (void)
+{
+	AGE_RESULT age_result = AGE_SUCCESS;
+	VkResult vk_result = VK_SUCCESS;
 
 	VkAttachmentDescription color_attachment_description = {
 		0,
@@ -1118,12 +1159,16 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_ac
 		goto exit;
 	}
 
-	VkDescriptorBufferInfo buffer_info = { 0 };
+	VkDescriptorBufferInfo buffer_info = { 
+		transforms_buffer,
+		0,
+		VK_WHOLE_SIZE
+	 };
 
 	VkWriteDescriptorSet descriptor_write = {
 		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		NULL,
-		0,
+		descriptor_set,
 		0,
 		0,
 		1,
@@ -1133,14 +1178,14 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_ac
 		NULL
 	};
 	
-//	vkUpdateDescriptorSets (graphics_device, 1, &descriptor_write, 0, NULL);
+	vkUpdateDescriptorSets (graphics_device, 1, &descriptor_write, 0, NULL);
 
 	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		NULL,
 		0,
-		0,
-		NULL,
+		1,
+		&descriptor_set_layout,
 		0,
 		NULL
 	};
@@ -1351,30 +1396,6 @@ AGE_RESULT graphics_init (HINSTANCE h_instance, HWND h_wnd, const vec2** game_ac
     }
 
 exit: // clear function specific allocations before exit
-	for (size_t i = 0; i < requested_instance_layer_count; ++i)
-	{
-		utils_free (requested_instance_layers[i]);
-	}
-	utils_free (requested_instance_layers);
-
-	for (size_t i = 0; i < requested_instance_extension_count; ++i)
-	{
-		utils_free (requested_instance_extensions[i]);
-	}
-	utils_free (requested_instance_extensions);
-
-	utils_free (physical_devices);
-	utils_free (queue_family_properties);
-
-	utils_free (surface_formats);
-	utils_free (present_modes);
-
-	for (size_t i = 0; i < requested_device_extension_count; ++i)
-	{
-		utils_free (requested_device_extensions[i]);
-	}
-	utils_free (requested_device_extensions);
-
 	if (staging_vertex_index_buffer != VK_NULL_HANDLE)
 	{
 		vkDestroyBuffer (graphics_device, staging_vertex_index_buffer, NULL);
@@ -1484,6 +1505,15 @@ exit: // clean up allocations made by the function
 	return age_result;
 }
 
+AGE_RESULT graphics_update_transforms_buffer (void)
+{
+	AGE_RESULT age_result = AGE_SUCCESS;
+	memcpy (transforms_data, *graphics_actors_positions, sizeof (vec2) * (*graphics_current_max_actor_count));
+
+exit:
+	return age_result;
+}
+
 AGE_RESULT graphics_update_command_buffers (void)
 {
 	printf ("graphics_update_command_buffers\n");
@@ -1524,12 +1554,7 @@ AGE_RESULT graphics_update_command_buffers (void)
 		}
 
 		render_pass_begin_info.framebuffer = swapchain_framebuffers[i];
-
-		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-		
-		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
-
-		VkDeviceSize offsets[6] = {
+		VkDeviceSize vertex_index_buffer_offsets[6] = {
 			0, 
 			(VkDeviceSize)background_positions_size,
 			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
@@ -1537,16 +1562,28 @@ AGE_RESULT graphics_update_command_buffers (void)
 			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size,
 			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size + (VkDeviceSize) actor_colors_size
 		};
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &offsets[0]);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &offsets[1]);
-		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, offsets[2], VK_INDEX_TYPE_UINT32);
+
+
+		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		
+		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+		uint32_t offset = 0;
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
+
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[0]);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[1]);
+		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed (swapchain_command_buffers[i], background_index_count, 1, 0, 0, 0);
 
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &offsets[3]);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &offsets[4]);
-		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, offsets[5], VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
-
+		for (size_t a = 0; a < *graphics_actor_count; ++a)
+		{
+			offset = a * aligned_size_per_transform;
+			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
+			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
+			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
+			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
+		}
 		vkCmdEndRenderPass (swapchain_command_buffers[i]);
 
 		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);
@@ -1796,7 +1833,7 @@ void graphics_check_data_from_game (void)
 	printf ("GRAPHICS\n");
 	for (size_t i = 0; i < *graphics_actor_count; ++i)
 	{
-		printf ("Positions n = %d, x = %f, y = %f\n", i, (*graphics_actors_transforms + i)->x, (*graphics_actors_transforms + i)->y);
+		printf ("Positions n = %d, x = %f, y = %f\n", i, (*graphics_actors_positions + i)->x, (*graphics_actors_positions + i)->y);
 	}
 
 	printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", *graphics_current_max_actor_count, *graphics_actor_count, *graphics_ACTOR_BATCH_SIZE);

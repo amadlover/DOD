@@ -30,7 +30,7 @@ size_t game_current_max_actor_count = 0;
 size_t game_actor_count = 0;
 const size_t game_ACTOR_BATCH_SIZE = 50;
 
-AGE_RESULT  game_reserve_memory_for_actors ()
+AGE_RESULT game_reserve_memory_for_actors ()
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
@@ -40,11 +40,6 @@ AGE_RESULT  game_reserve_memory_for_actors ()
     game_actors_directions = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
     game_actors_rotations = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
 
-    age_result = graphics_create_transforms_buffer ();
-    if (age_result != AGE_SUCCESS)
-    {
-        goto exit;
-    }
 
 exit: // clean up allocations done in this function
 
@@ -56,13 +51,6 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
     AGE_RESULT age_result = AGE_SUCCESS;
 
     srand (time (NULL));
-    
-    AGE_RESULT result = graphics_init (h_instance, h_wnd, &game_actors_positions, &game_actor_count, &game_current_max_actor_count, &game_ACTOR_BATCH_SIZE);
-
-    if (result != AGE_SUCCESS)
-    {
-        goto exit;
-    }
 
     age_result = game_reserve_memory_for_actors ();
     if (age_result != AGE_SUCCESS)
@@ -70,8 +58,37 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         goto exit;
     }
 
+    age_result = graphics_common_graphics_init (
+        h_instance, 
+        h_wnd,         
+        &game_actors_positions, 
+        &game_actor_count, 
+        &game_current_max_actor_count, 
+        &game_ACTOR_BATCH_SIZE
+    );
+
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+    age_result = graphics_create_transforms_buffer ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+    age_result = graphics_init (
+
+    );
+
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
 exit:  // place to clean up local allocations
-    return result;
+    return age_result;
 }
 
 AGE_RESULT game_add_actor (size_t x, size_t y)
@@ -121,8 +138,8 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
         }
     }
 
-    game_actors_positions[game_actor_count].x = ((float)x / (float)640) * 200.f - 100.f;
-    game_actors_positions[game_actor_count].y = ((float)y / (float)480) * 200.f - 100.f;
+    game_actors_positions[game_actor_count].x = ((float)x / (float)640) * 2.f - 1.f;
+    game_actors_positions[game_actor_count].y = ((float)y / (float)480) * 2.f - 1.f;
 
     game_actors_directions[game_actor_count].x = (float)rand () / (float)RAND_MAX;
     game_actors_directions[game_actor_count].y = (float)rand () / (float)RAND_MAX;
@@ -178,9 +195,19 @@ AGE_RESULT game_update (void)
     
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    age_result = graphics_submit_present ();
+    age_result = graphics_update_transforms_buffer();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
 
-exit:
+    age_result = graphics_submit_present ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+exit: // clear function specific allocations
     return age_result;
 }
 
