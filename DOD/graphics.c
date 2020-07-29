@@ -69,7 +69,7 @@ size_t total_transforms_size = 0;
 void* transforms_aligned_data = NULL;
 void* transforms_mapped_data = NULL;
 
-float background_positions[12] = { -0.9f,-0.9f,0.9f, 0.9f,-0.9f,0.9f, 0.9f,0.9f,0.9f, -0.9f,0.9f,0.9f };
+float background_positions[12] = { -1,-1,1, 1,-1,1, 1,1,1, -1,1,1 };
 float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
 size_t background_positions_size = sizeof (background_positions);
 size_t background_colors_size = sizeof (background_colors);
@@ -1411,8 +1411,6 @@ exit: // clear function specific allocations before exit
 
 AGE_RESULT graphics_create_transforms_buffer (void)
 {
-	printf ("graphics_create_transforms_buffen");
-
 	if (transforms_mapped_data != NULL)
 	{
 		vkUnmapMemory (graphics_device, transforms_buffer_memory);
@@ -1420,13 +1418,11 @@ AGE_RESULT graphics_create_transforms_buffer (void)
 
 	if (transforms_buffer != VK_NULL_HANDLE)
 	{
-		printf ("destroying transform buffer\n");
 		vkDestroyBuffer (graphics_device, transforms_buffer, NULL);
 	}
 
 	if (transforms_buffer_memory != VK_NULL_HANDLE)
 	{
-		printf ("destroying transform buffer memory\n");
 		vkFreeMemory (graphics_device, transforms_buffer_memory, NULL);
 	}
 

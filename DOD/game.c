@@ -193,6 +193,13 @@ AGE_RESULT game_update (void)
     
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    for (size_t a = 0; a < game_actor_count; ++a)
+    {
+        srand (rand ());
+        game_actors_positions[a].x += (((float)rand () / (float)RAND_MAX) * 2 - 1) / 100.f;
+        game_actors_positions[a].y += (((float)rand () / (float)RAND_MAX) * 2 - 1) / 100.f;
+    }
+
     age_result = graphics_update_transforms_buffer();
     if (age_result != AGE_SUCCESS)
     {
