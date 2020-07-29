@@ -65,7 +65,8 @@ VkDeviceMemory transforms_buffer_memory = VK_NULL_HANDLE;
 size_t aligned_size_per_transform = 0;
 size_t total_transforms_size = 0;
 
-void* transforms_data = NULL;
+void* transforms_aligned_data = NULL;
+void* transforms_mapped_data = NULL;
 
 float background_positions[12] = { -0.9f,-0.9f,0.9f, 0.9f,-0.9f,0.9f, 0.9f,0.9f,0.9f, -0.9f,0.9f,0.9f };
 float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
@@ -633,6 +634,79 @@ AGE_RESULT graphics_common_graphics_init (
 	vkGetDeviceQueue (graphics_device, compute_queue_family_index, compute_queue_index, &compute_queue);
 	vkGetDeviceQueue (graphics_device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
 
+
+	VkDescriptorPoolSize descriptor_pool_size = {
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		1
+	};
+
+	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		NULL,
+		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+		1,
+		1,
+		&descriptor_pool_size
+	};
+	vk_result = vkCreateDescriptorPool (graphics_device, &descriptor_pool_create_info, NULL, &descriptor_pool);
+
+	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
+		0,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		1,
+		VK_SHADER_STAGE_VERTEX_BIT,
+		NULL
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		NULL,
+		0,
+		1,
+		&descriptor_layout_binding
+	};
+
+	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
+
+	vk_result = vkCreateDescriptorSetLayout (graphics_device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
+		goto exit;
+	}
+
+	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		NULL,
+		descriptor_pool,
+		1,
+		&descriptor_set_layout
+	};
+
+	vk_result = vkAllocateDescriptorSets (graphics_device, &descriptor_set_allocate_info, &descriptor_set);
+	if (vk_result)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
+		goto exit;
+	}
+
+	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		NULL,
+		0,
+		1,
+		&descriptor_set_layout,
+		0,
+		NULL
+	};
+
+	vk_result = vkCreatePipelineLayout (graphics_device, &pipeline_layout_create_info, NULL, &graphics_pipeline_layout);
+	if (vk_result)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_PIPELINE_LAYOUT;
+		goto exit;
+	}
+
 exit: // clean up allocation made within the function
 
 	for (size_t i = 0; i < requested_instance_layer_count; ++i)
@@ -658,6 +732,11 @@ exit: // clean up allocation made within the function
 		utils_free (requested_device_extensions[i]);
 	}
 	utils_free (requested_device_extensions);
+
+	if (descriptor_set_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
+	}
 
 	return age_result;
 }
@@ -1104,99 +1183,6 @@ AGE_RESULT graphics_init (void)
 
 	vkQueueWaitIdle (transfer_queue);
 
-	VkDescriptorPoolSize descriptor_pool_size = {
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1
-	};
-
-	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		NULL,
-		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		1,
-		1,
-		&descriptor_pool_size
-	};
-	vk_result = vkCreateDescriptorPool (graphics_device, &descriptor_pool_create_info, NULL, &descriptor_pool);
-
-	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
-		0,
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1,
-		VK_SHADER_STAGE_VERTEX_BIT,
-		NULL
-	};
-
-	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		NULL,
-		0,
-		1,
-		&descriptor_layout_binding
-	};
-
-	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
-
-	vk_result = vkCreateDescriptorSetLayout (graphics_device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
-		goto exit;
-	}
-
-	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-		NULL,
-		descriptor_pool,
-		1,
-		&descriptor_set_layout
-	};
-	
-	vk_result = vkAllocateDescriptorSets (graphics_device, &descriptor_set_allocate_info, &descriptor_set);
-	if (vk_result)
-	{
-		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
-		goto exit;
-	}
-
-	VkDescriptorBufferInfo buffer_info = { 
-		transforms_buffer,
-		0,
-		VK_WHOLE_SIZE
-	 };
-
-	VkWriteDescriptorSet descriptor_write = {
-		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-		NULL,
-		descriptor_set,
-		0,
-		0,
-		1,
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		NULL,
-		&buffer_info,
-		NULL
-	};
-	
-	vkUpdateDescriptorSets (graphics_device, 1, &descriptor_write, 0, NULL);
-
-	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		NULL,
-		0,
-		1,
-		&descriptor_set_layout,
-		0,
-		NULL
-	};
-
-	vk_result = vkCreatePipelineLayout (graphics_device, &pipeline_layout_create_info, NULL, &graphics_pipeline_layout);
-	if (vk_result)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_PIPELINE_LAYOUT;
-		goto exit;
-	}
-
 	VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
 	VkShaderModuleCreateInfo vertex_shader_module_create_info = {
 		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -1416,11 +1402,6 @@ exit: // clear function specific allocations before exit
 		vkDestroyCommandPool (graphics_device, transfer_command_pool, NULL);
 	}
 
-	if (descriptor_set_layout != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
-	}
-
 	if (vertex_shader_module != VK_NULL_HANDLE)
 	{
 		vkDestroyShaderModule (graphics_device, vertex_shader_module, NULL);
@@ -1436,13 +1417,31 @@ exit: // clear function specific allocations before exit
 
 AGE_RESULT graphics_create_transforms_buffer (void)
 {
+	if (transforms_buffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer (graphics_device, transforms_buffer, NULL);
+	}
+
+	if (transforms_buffer_memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory (graphics_device, transforms_buffer_memory, NULL);
+	}
+
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 
 	size_t raw_size_per_transform = sizeof (vec2);
 	aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
 
-	total_transforms_size = aligned_size_per_transform * (*graphics_ACTOR_BATCH_SIZE);
+	total_transforms_size = aligned_size_per_transform * (*graphics_current_max_actor_count);
+	if (transforms_aligned_data == NULL)
+	{
+		transforms_aligned_data = utils_calloc (*graphics_current_max_actor_count, aligned_size_per_transform);
+	}
+	else 
+	{
+		transforms_aligned_data = utils_realloc (transforms_aligned_data, total_transforms_size);
+	}
 
 	VkBufferCreateInfo transforms_buffer_create_info = {
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -1498,7 +1497,29 @@ AGE_RESULT graphics_create_transforms_buffer (void)
 		goto exit;
 	}
 
-	vkMapMemory (graphics_device, transforms_buffer_memory, 0, memory_requirements.size, 0, &transforms_data);
+	vkUnmapMemory (graphics_device, transforms_buffer_memory);
+	vkMapMemory (graphics_device, transforms_buffer_memory, 0, memory_requirements.size, 0, &transforms_mapped_data);
+
+	VkDescriptorBufferInfo buffer_info = {
+		transforms_buffer,
+		0,
+		VK_WHOLE_SIZE
+	};
+
+	VkWriteDescriptorSet descriptor_write = {
+		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		NULL,
+		descriptor_set,
+		0,
+		0,
+		1,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		NULL,
+		&buffer_info,
+		NULL
+	};
+
+	vkUpdateDescriptorSets (graphics_device, 1, &descriptor_write, 0, NULL);
 
 exit: // clean up allocations made by the function
 
@@ -1508,7 +1529,13 @@ exit: // clean up allocations made by the function
 AGE_RESULT graphics_update_transforms_buffer (void)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
-	memcpy (transforms_data, *graphics_actors_positions, sizeof (vec2) * (*graphics_current_max_actor_count));
+
+	for (size_t a = 0; a < *graphics_actor_count; ++a)
+	{
+		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * a), *graphics_actors_positions + a, sizeof (vec2));
+	}
+
+	memcpy (transforms_mapped_data, transforms_aligned_data, aligned_size_per_transform * (*graphics_current_max_actor_count));
 
 exit:
 	return age_result;
@@ -1689,6 +1716,7 @@ void graphics_exit (void)
 	vkQueueWaitIdle (graphics_queue);
 
 	vkUnmapMemory (graphics_device, transforms_buffer_memory);
+	utils_free (transforms_aligned_data);
 
 	if (descriptor_set != VK_NULL_HANDLE)
 	{

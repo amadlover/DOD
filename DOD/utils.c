@@ -143,6 +143,12 @@ void* utils_aligned_calloc (const size_t count, const size_t size, const size_t 
 	return ptr;
 }
 
+void* utils_realloc (void* ptr, size_t new_size)
+{
+	void* new_ptr = realloc (ptr, new_size);
+	return new_ptr;
+}
+
 void* utils_realloc_zero (void* ptr, size_t old_size, size_t new_size)
 {
 	void* new_ptr = realloc (ptr, new_size);
