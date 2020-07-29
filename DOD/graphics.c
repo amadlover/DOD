@@ -51,6 +51,7 @@ VkDeviceMemory vertex_index_memory = VK_NULL_HANDLE;
 VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
 VkPipeline graphics_pipeline = VK_NULL_HANDLE;
 VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
@@ -76,7 +77,7 @@ size_t background_indices[6] = { 0,1,2, 0,2,3 };
 size_t background_indices_size = sizeof (background_indices);
 size_t background_index_count = 6;
 
-float actor_positions[9] = { -0.1,0,0.5f, 0.1,0,0.5f, 0,0.1,0.5f };
+float actor_positions[9] = { -0.1f,0,0.5f, 0.1f,0,0.5f, 0,0.1f,0.5f };
 float actor_colors[9] = {1,0,0, 0,1,0, 0,0,1 };
 size_t actor_positions_size = sizeof (actor_positions);
 size_t actor_colors_size = sizeof (actor_colors);
@@ -666,8 +667,6 @@ AGE_RESULT graphics_common_graphics_init (
 		&descriptor_layout_binding
 	};
 
-	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
-
 	vk_result = vkCreateDescriptorSetLayout (graphics_device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
 	if (vk_result != VK_SUCCESS)
 	{
@@ -732,11 +731,6 @@ exit: // clean up allocation made within the function
 		utils_free (requested_device_extensions[i]);
 	}
 	utils_free (requested_device_extensions);
-
-	if (descriptor_set_layout != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
-	}
 
 	return age_result;
 }
@@ -1417,13 +1411,22 @@ exit: // clear function specific allocations before exit
 
 AGE_RESULT graphics_create_transforms_buffer (void)
 {
+	printf ("graphics_create_transforms_buffen");
+
+	if (transforms_mapped_data != NULL)
+	{
+		vkUnmapMemory (graphics_device, transforms_buffer_memory);
+	}
+
 	if (transforms_buffer != VK_NULL_HANDLE)
 	{
+		printf ("destroying transform buffer\n");
 		vkDestroyBuffer (graphics_device, transforms_buffer, NULL);
 	}
 
 	if (transforms_buffer_memory != VK_NULL_HANDLE)
 	{
+		printf ("destroying transform buffer memory\n");
 		vkFreeMemory (graphics_device, transforms_buffer_memory, NULL);
 	}
 
@@ -1497,7 +1500,6 @@ AGE_RESULT graphics_create_transforms_buffer (void)
 		goto exit;
 	}
 
-	vkUnmapMemory (graphics_device, transforms_buffer_memory);
 	vkMapMemory (graphics_device, transforms_buffer_memory, 0, memory_requirements.size, 0, &transforms_mapped_data);
 
 	VkDescriptorBufferInfo buffer_info = {
@@ -1714,12 +1716,21 @@ void graphics_exit (void)
 {
 	vkQueueWaitIdle (graphics_queue);
 
-	vkUnmapMemory (graphics_device, transforms_buffer_memory);
+	if (transforms_mapped_data != NULL)
+	{
+		vkUnmapMemory (graphics_device, transforms_buffer_memory);
+	}
+
 	utils_free (transforms_aligned_data);
 
 	if (descriptor_set != VK_NULL_HANDLE)
 	{
 		vkFreeDescriptorSets (graphics_device, descriptor_pool, 1, &descriptor_set);
+	}
+	
+	if (descriptor_set_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout (graphics_device, descriptor_set_layout, NULL);
 	}
 
 	if (descriptor_pool != VK_NULL_HANDLE)
@@ -1860,7 +1871,7 @@ void graphics_check_data_from_game (void)
 	printf ("GRAPHICS\n");
 	for (size_t i = 0; i < *graphics_actor_count; ++i)
 	{
-		printf ("Positions n = %d, x = %f, y = %f\n", i, (*graphics_actors_positions + i)->x, (*graphics_actors_positions + i)->y);
+	//	printf ("Positions n = %d, x = %f, y = %f\n", i, (*graphics_actors_positions + i)->x, (*graphics_actors_positions + i)->y);
 	}
 
 	printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", *graphics_current_max_actor_count, *graphics_actor_count, *graphics_ACTOR_BATCH_SIZE);

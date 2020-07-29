@@ -59,11 +59,11 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
     }
 
     age_result = graphics_common_graphics_init (
-        h_instance, 
-        h_wnd,         
-        &game_actors_positions, 
-        &game_actor_count, 
-        &game_current_max_actor_count, 
+        h_instance,
+        h_wnd,
+        &game_actors_positions,
+        &game_actor_count,
+        &game_current_max_actor_count,
         &game_ACTOR_BATCH_SIZE
     );
 
@@ -78,9 +78,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         goto exit;
     }
 
-    age_result = graphics_init (
-
-    );
+    age_result = graphics_init ();
 
     if (age_result != AGE_SUCCESS)
     {
@@ -138,7 +136,6 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
         }
     }
 
-
     game_actors_positions[game_actor_count].x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_positions[game_actor_count].y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
 
@@ -153,7 +150,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
     printf ("GAME\n");
     for (size_t n = 0; n < game_actor_count; ++n)
     {
-        printf ("Positions n = %d, x = %f, y = %f\n", n, game_actors_positions[n].x, game_actors_positions[n].y);
+        //printf ("Positions n = %d, x = %f, y = %f\n", n, game_actors_positions[n].x, game_actors_positions[n].y);
     }
 
     printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_actor_count, game_ACTOR_BATCH_SIZE);
