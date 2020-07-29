@@ -138,8 +138,9 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
         }
     }
 
-    game_actors_positions[game_actor_count].x = ((float)x / (float)640) * 2.f - 1.f;
-    game_actors_positions[game_actor_count].y = ((float)y / (float)480) * 2.f - 1.f;
+
+    game_actors_positions[game_actor_count].x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions[game_actor_count].y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
 
     game_actors_directions[game_actor_count].x = (float)rand () / (float)RAND_MAX;
     game_actors_directions[game_actor_count].y = (float)rand () / (float)RAND_MAX;

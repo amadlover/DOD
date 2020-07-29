@@ -76,7 +76,7 @@ size_t background_indices[6] = { 0,1,2, 0,2,3 };
 size_t background_indices_size = sizeof (background_indices);
 size_t background_index_count = 6;
 
-float actor_positions[9] = { -1,0,0.5f, 1,0,0.5f, 0,1,0.5f };
+float actor_positions[9] = { -0.1,0,0.5f, 0.1,0,0.5f, 0,0.1,0.5f };
 float actor_colors[9] = {1,0,0, 0,1,0, 0,0,1 };
 size_t actor_positions_size = sizeof (actor_positions);
 size_t actor_colors_size = sizeof (actor_colors);
@@ -1433,10 +1433,10 @@ AGE_RESULT graphics_create_transforms_buffer (void)
 	size_t raw_size_per_transform = sizeof (vec2);
 	aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
 
-	total_transforms_size = aligned_size_per_transform * (*graphics_current_max_actor_count);
+	total_transforms_size = aligned_size_per_transform * (*graphics_current_max_actor_count + 1);
 	if (transforms_aligned_data == NULL)
 	{
-		transforms_aligned_data = utils_calloc (*graphics_current_max_actor_count, aligned_size_per_transform);
+		transforms_aligned_data = utils_calloc (*graphics_current_max_actor_count + 1, aligned_size_per_transform);
 	}
 	else 
 	{
@@ -1532,7 +1532,7 @@ AGE_RESULT graphics_update_transforms_buffer (void)
 
 	for (size_t a = 0; a < *graphics_actor_count; ++a)
 	{
-		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * a), *graphics_actors_positions + a, sizeof (vec2));
+		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (a + 1)), *graphics_actors_positions + a, sizeof (vec2));
 	}
 
 	memcpy (transforms_mapped_data, transforms_aligned_data, aligned_size_per_transform * (*graphics_current_max_actor_count));
@@ -1590,7 +1590,6 @@ AGE_RESULT graphics_update_command_buffers (void)
 			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size + (VkDeviceSize) actor_colors_size
 		};
 
-
 		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		
 		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
@@ -1604,7 +1603,7 @@ AGE_RESULT graphics_update_command_buffers (void)
 
 		for (size_t a = 0; a < *graphics_actor_count; ++a)
 		{
-			offset = a * aligned_size_per_transform;
+			offset = aligned_size_per_transform * (a + 1);
 			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
 			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
 			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);

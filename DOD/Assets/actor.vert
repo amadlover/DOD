@@ -14,7 +14,7 @@ layout (location = 0) out vec3 out_color;
 
 void main ()
 {
-    gl_Position = vec4 (mat_buff.actor_position, 0, 1) + vec4 (in_position, 1);
+    gl_Position = vec4 (vec3 (mat_buff.actor_position, 0) + in_position, 1);
 
     out_color = in_color;
 }
