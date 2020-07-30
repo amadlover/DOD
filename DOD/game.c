@@ -214,13 +214,21 @@ AGE_RESULT game_update (void)
         goto exit;
     }
 
+exit: // clear function specific allocations
+    return age_result;
+}
+
+AGE_RESULT game_submit_present (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
     age_result = graphics_submit_present ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
     }
 
-exit: // clear function specific allocations
+exit:
     return age_result;
 }
 

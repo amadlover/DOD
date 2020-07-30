@@ -5,11 +5,18 @@
 #include <stdlib.h>
 #include <time.h>
 
+//#include <SDL.h>
+//#include <SDL_thread.h>
+
 #include "error.h"
 #include "log.h"
 #include "game.h"
 
 #define ID_GAME_TICK 1237
+
+//SDL_Thread* game_input_thread = NULL;
+//SDL_Thread* game_update_thread = NULL;
+//SDL_Thread* game_submit_present_thread = NULL;
 
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
@@ -35,6 +42,7 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             break;
 
         case WM_TIMER:
+            printf ("WM_TIMER\n");
             age_result = game_update ();
             if (age_result != AGE_SUCCESS)
             {
@@ -114,14 +122,14 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     ShowWindow (h_wnd, cmd_show);
     UpdateWindow (h_wnd);
 
-    AGE_RESULT result = game_init (h_instance, h_wnd);
-    if (result != AGE_SUCCESS)
+    AGE_RESULT age_result = game_init (h_instance, h_wnd);
+    if (age_result != AGE_SUCCESS)
     {
-        log_error (result);
+        log_error (age_result);
         goto exit;
     }
 
-    SetTimer (h_wnd, ID_GAME_TICK, 8, NULL);
+    SetTimer (h_wnd, ID_GAME_TICK, 8, (TIMERPROC)game_update);
 
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));
@@ -137,15 +145,15 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
             TranslateMessage (&msg);
             DispatchMessage (&msg);
         }
-        /*else
+        else
         {
-            result = game_update ();
-            if (result != AGE_SUCCESS)
+            age_result = game_submit_present ();
+            if (age_result != AGE_SUCCESS)
             {
-                log_error (result);
+                log_error (age_result);
                 goto exit;
             }
-        }*/
+        }
     }
 
  exit:
@@ -156,5 +164,8 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     _getch ();
     FreeConsole ();
 
+ //   SDL_WaitThread (game_update_thread, &age_result);
+ //   SDL_WaitThread (game_submit_present_thread, &age_result);
+    
     return EXIT_SUCCESS;
 }
