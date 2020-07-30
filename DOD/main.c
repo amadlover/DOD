@@ -3,10 +3,13 @@
 #include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "error.h"
 #include "log.h"
 #include "game.h"
+
+#define ID_GAME_TICK 1237
 
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
@@ -29,6 +32,15 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             break;
 
         case WM_KEYDOWN:
+            break;
+
+        case WM_TIMER:
+            age_result = game_update ();
+            if (age_result != AGE_SUCCESS)
+            {
+                log_error (age_result);
+                PostQuitMessage (age_result);
+            }
             break;
 
         case WM_LBUTTONDOWN:
@@ -109,6 +121,8 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         goto exit;
     }
 
+    SetTimer (h_wnd, ID_GAME_TICK, 8, NULL);
+
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));
 
@@ -116,10 +130,14 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     {
         if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))
         {
+            if (msg.message == WM_TIMER) 
+            {
+                msg.hwnd = h_wnd;
+            }
             TranslateMessage (&msg);
             DispatchMessage (&msg);
         }
-        else
+        /*else
         {
             result = game_update ();
             if (result != AGE_SUCCESS)
@@ -127,7 +145,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
                 log_error (result);
                 goto exit;
             }
-        }
+        }*/
     }
 
  exit:

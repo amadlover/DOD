@@ -179,18 +179,26 @@ AGE_RESULT game_process_left_mouse_click (const size_t x, const size_t y)
     }
 
 exit:
+    return age_result;;
+}
+
+AGE_RESULT game_process_right_mouse_click (const size_t x, const size_t y)
+{
+    printf ("Right click at %d %d\n", x, y);
+
+    AGE_RESULT age_result = AGE_SUCCESS;
+
     return age_result;
 }
 
-void game_process_right_mouse_click (const size_t x, const size_t y)
+uint32_t game_tick (uint32_t interval, void* data)
 {
-    printf ("Right click at %d %d\n", x, y);
+    game_update ();
+    return interval;
 }
 
 AGE_RESULT game_update (void)
 {
-    //printf ("game_update\n");
-    
     AGE_RESULT age_result = AGE_SUCCESS;
 
     for (size_t a = 0; a < game_actor_count; ++a)
