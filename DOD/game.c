@@ -1,6 +1,6 @@
 #include "game.h"
 #include "graphics.h"
-#include "math_types.h"
+#include "types.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -22,7 +22,7 @@
  *
  * */
 
-vec2* game_actors_positions = NULL; // x,y positions clamped between -100 and +100
+vec2* game_actors_positions = NULL; // x,y positions clamped between -1 and +1
 vec2* game_actors_directions = NULL; // x,y normalized vectors
 vec2* game_actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 

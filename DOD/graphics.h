@@ -1,7 +1,7 @@
 #pragma once
 
 #include "error.h"
-#include "math_types.h"
+#include "types.h"
 
 #include <Windows.h>
 

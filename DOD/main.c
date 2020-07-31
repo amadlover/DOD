@@ -137,6 +137,15 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
             TranslateMessage (&msg);
             DispatchMessage (&msg);
         }
+        else
+        {
+            result = game_submit_present ();
+            if (result != AGE_SUCCESS)
+            {
+                log_error (result);
+                goto exit;
+            }
+        }
     }
 
  exit:

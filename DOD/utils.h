@@ -26,6 +26,7 @@ void* utils_aligned_calloc (const size_t count, const size_t size, const size_t 
 void* utils_realloc (void* ptr, size_t new_size);
 void* utils_realloc_zero (void* ptr, size_t old_size, size_t new_size);
 void* utils_aligned_realloc_zero (void* ptr, size_t alignment, size_t old_size, size_t new_size);
+
 void utils_free (void* ptr);
 void utils_aligned_free (void* ptr);
 void utils_free_image_data (uint8_t * pixels);

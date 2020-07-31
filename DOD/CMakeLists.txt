@@ -8,7 +8,7 @@ include_directories (${CMAKE_SOURCE_DIR}/External/stb)
 link_directories ($ENV{VULKAN_SDK}/Lib32)
 link_directories (${CMAKE_SOURCE_DIR}/External/SDL/lib32)
 
-set (H graphics.h game.h utils.h log.h error.h math_types.h actor_vert.h actor_frag.h)
+set (H graphics.h game.h utils.h log.h error.h types.h actor_vert.h actor_frag.h)
 set (C graphics.c game.c utils.c main.c log.c)
 
 add_executable (DOD WIN32 ${H} ${C})

@@ -13,3 +13,10 @@ typedef struct vec3_
     float y;
     float z;
 } vec3;
+
+typedef struct position_
+{
+    vec2 position;
+    vec2 direction;
+    float speed;
+} position;
