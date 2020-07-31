@@ -10,4 +10,5 @@ AGE_RESULT game_process_left_mouse_click (const size_t x, const size_t y);
 AGE_RESULT game_process_right_mouse_click (const size_t x, const size_t y);
 uint32_t game_tick (uint32_t interval, void* data);
 AGE_RESULT game_update (void);
+AGE_RESULT game_submit_present (void);
 void game_exit (void);
