@@ -5,7 +5,6 @@
 #include "utils.h"
 
 #include <stdlib.h>
-#include <time.h>
 #include <stdio.h>
 
 /*
@@ -30,7 +29,7 @@ vec2* game_actors_positions = NULL; // x,y positions clamped between -1 and +1
 vec2* game_actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 
 size_t game_current_max_actor_count = 0;
-size_t game_actor_count = 0;
+size_t game_live_actor_count = 0;
 const size_t game_ACTOR_BATCH_SIZE = 50;
 
 AGE_RESULT game_reserve_memory_for_actors ()
@@ -53,7 +52,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    srand (time (NULL));
+    srand (rand ());
 
     age_result = game_reserve_memory_for_actors ();
     if (age_result != AGE_SUCCESS)
@@ -65,7 +64,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         h_instance,
         h_wnd,
         &game_actors_positions,
-        &game_actor_count,
+        &game_live_actor_count,
         &game_current_max_actor_count,
         &game_ACTOR_BATCH_SIZE
     );
@@ -96,7 +95,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    if (game_actor_count == game_current_max_actor_count)
+    if (game_live_actor_count == game_current_max_actor_count)
     {
         game_current_max_actor_count += game_ACTOR_BATCH_SIZE;
 
@@ -140,26 +139,22 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
         }
     }
 
-    game_actors_positions[game_actor_count].x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_positions[game_actor_count].y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions[game_live_actor_count].x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions[game_live_actor_count].y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
 
-    game_actors_rotations[game_actor_count].x = (float)rand () / (float)RAND_MAX * 360.f;
-    game_actors_rotations[game_actor_count].y = (float)rand () / (float)RAND_MAX * 10.f;
+    game_actors_rotations[game_live_actor_count].x = (float)rand () / (float)RAND_MAX * 360.f;
+    game_actors_rotations[game_live_actor_count].y = (float)rand () / (float)RAND_MAX * 10.f;
 
-    game_actors_positions_inputs[game_actor_count].position.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_positions_inputs[game_actor_count].position.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_positions_inputs[game_actor_count].direction.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_positions_inputs[game_actor_count].direction.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_positions_inputs[game_actor_count].speed = ((float)rand () / (float)RAND_MAX) / 100.f;
+    game_actors_positions_inputs[game_live_actor_count].position.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_live_actor_count].position.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_live_actor_count].direction.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_live_actor_count].direction.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_live_actor_count].speed = ((float)rand () / (float)RAND_MAX) / 100.f;
 
-    ++game_actor_count;
+    ++game_live_actor_count;
 
     printf ("GAME\n");
-    for (size_t a = 0; a < game_actor_count; ++a)
-    {
-    }
-
-    printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_actor_count, game_ACTOR_BATCH_SIZE);
+    printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_live_actor_count, game_ACTOR_BATCH_SIZE);
 
     graphics_check_data_from_game ();
     
@@ -188,12 +183,62 @@ exit:
     return age_result;;
 }
 
+AGE_RESULT game_remove_actor (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    srand (rand ());
+    size_t actor_index_to_remove = ((float)rand () / (float)RAND_MAX) * game_live_actor_count;
+
+    printf ("index to remove: %d\n", actor_index_to_remove);
+
+    if (game_live_actor_count > 0)
+    {
+        for (size_t a = actor_index_to_remove; a < game_live_actor_count; ++a)
+        {
+            memcpy (game_actors_positions + a, game_actors_positions + (a + 1), sizeof (vec2));
+        }
+
+        for (size_t a = actor_index_to_remove; a < game_live_actor_count; ++a)
+        {
+            memcpy (game_actors_rotations + a, game_actors_rotations + (a + 1), sizeof (vec2));
+        }
+
+        for (size_t a = actor_index_to_remove; a < game_live_actor_count; ++a)
+        {
+            memcpy (game_actors_positions_inputs + a, game_actors_positions_inputs + (a + 1), sizeof (position_inputs));
+        }
+
+        --game_live_actor_count;
+
+        printf ("GAME\n");
+        printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_live_actor_count, game_ACTOR_BATCH_SIZE);
+
+        graphics_check_data_from_game ();
+    }
+exit:
+    return age_result;
+}
+
 AGE_RESULT game_process_right_mouse_click (const size_t x, const size_t y)
 {
     printf ("Right click at %d %d\n", x, y);
 
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    age_result = game_remove_actor ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+    age_result = graphics_update_command_buffers ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+exit:
     return age_result;
 }
 
@@ -207,13 +252,13 @@ AGE_RESULT game_update (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    for (size_t a = 0; a < game_actor_count; ++a)
+    for (size_t a = 0; a < game_live_actor_count; ++a)
     {
         game_actors_positions_inputs[a].position.x += (game_actors_positions_inputs[a].direction.x * game_actors_positions_inputs[a].speed);
         game_actors_positions_inputs[a].position.y += (game_actors_positions_inputs[a].direction.y * game_actors_positions_inputs[a].speed);
     }
 
-    for (size_t a = 0; a < game_actor_count; ++a)
+    for (size_t a = 0; a < game_live_actor_count; ++a)
     {
         game_actors_positions[a].x = game_actors_positions_inputs[a].position.x;
         game_actors_positions[a].y = game_actors_positions_inputs[a].position.y;

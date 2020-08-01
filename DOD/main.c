@@ -3,7 +3,6 @@
 #include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 #include "error.h"
 #include "log.h"
@@ -99,8 +98,8 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, 
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        1280,
-        720, 
+        640,
+        480, 
         NULL,
         NULL,
         h_instance,
