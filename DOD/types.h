@@ -16,7 +16,24 @@ typedef struct vec3_
 
 typedef struct position_inputs_
 {
-    vec2 position;
     vec2 direction;
     float speed;
 } position_inputs;
+
+typedef struct rotation_inputs_
+{
+    float speed;
+} rotation_inputs;
+
+typedef struct actor_transform_inputs_
+{
+    vec2 direction;
+    float position_speed;
+    float rotation_speed;
+} actor_transform_inputs;
+
+typedef struct actor_transform_outputs_
+{
+    vec2 position;
+    float rotation;
+} actor_transform_outputs;

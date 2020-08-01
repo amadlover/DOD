@@ -55,7 +55,7 @@ VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
-const vec2** graphics_actors_positions = NULL;
+const actor_transform_outputs** graphics_actors_transform_outputs = NULL;
 const size_t* graphics_actor_count = 0;
 const size_t* graphics_current_max_actor_count = 0;
 const size_t* graphics_ACTOR_BATCH_SIZE = 0;
@@ -135,7 +135,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback (
 AGE_RESULT graphics_common_graphics_init (
 	HINSTANCE h_instance, 
 	HWND h_wnd,
-	const vec2** game_actor_positions, 
+	const actor_transform_outputs** game_actors_transform_outputs, 
 	const size_t* game_actor_count, 
 	const size_t* game_current_max_actor_count, 
 	const size_t* game_ACTOR_BATCH_SIZE
@@ -151,7 +151,7 @@ AGE_RESULT graphics_common_graphics_init (
 
 	graphics_current_max_actor_count = game_current_max_actor_count;
 	graphics_actor_count = game_actor_count;
-	graphics_actors_positions = game_actor_positions;
+	graphics_actors_transform_outputs = game_actors_transform_outputs;
 	graphics_ACTOR_BATCH_SIZE = game_ACTOR_BATCH_SIZE;
 
 	char** requested_instance_layers = NULL;
@@ -1429,7 +1429,7 @@ AGE_RESULT graphics_create_transforms_buffer (void)
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 
-	size_t raw_size_per_transform = sizeof (vec2);
+	size_t raw_size_per_transform = sizeof (actor_transform_outputs);
 	aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
 
 	total_transforms_size = aligned_size_per_transform * (*graphics_current_max_actor_count + 1);
@@ -1530,7 +1530,7 @@ AGE_RESULT graphics_update_transforms_buffer (void)
 
 	for (size_t a = 0; a < *graphics_actor_count; ++a)
 	{
-		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (a + 1)), *graphics_actors_positions + a, sizeof (vec2));
+		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (a + 1)), *graphics_actors_transform_outputs + a, sizeof (actor_transform_outputs));
 	}
 
 	memcpy (transforms_mapped_data, transforms_aligned_data, aligned_size_per_transform * (*graphics_current_max_actor_count));
