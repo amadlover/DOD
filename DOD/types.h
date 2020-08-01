@@ -14,9 +14,9 @@ typedef struct vec3_
     float z;
 } vec3;
 
-typedef struct position_
+typedef struct position_inputs_
 {
     vec2 position;
     vec2 direction;
     float speed;
-} position;
+} position_inputs;

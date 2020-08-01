@@ -21,6 +21,7 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             break;
 
         case WM_QUIT:
+            PostQuitMessage (0);
             break;
 
         case WM_DESTROY:
@@ -95,11 +96,11 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     HWND h_wnd = CreateWindow (
         L"DOD", 
         L"DOD",
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, 
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        640,
-        480, 
+        1280,
+        720, 
         NULL,
         NULL,
         h_instance,
@@ -126,7 +127,11 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));
 
-    while (msg.message != WM_QUIT)
+    while (
+        msg.message != WM_QUIT && 
+        msg.message != WM_CLOSE && 
+        msg.message != WM_DESTROY
+        )
     {
         if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))
         {
@@ -147,6 +152,8 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
             }
         }
     }
+
+    KillTimer (h_wnd, ID_GAME_TICK);
 
  exit:
     game_exit ();

@@ -2,6 +2,8 @@
 #include "graphics.h"
 #include "types.h"
 
+#include "utils.h"
+
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
@@ -10,7 +12,7 @@
  * OOP struct
  *
  * struct actor {
- *     vec2 position;
+ *     vec2 position_inputs;
  *     vec2 direction;
  *     vec2 rotation;
  *     vec2 scale;
@@ -22,8 +24,9 @@
  *
  * */
 
+position_inputs* game_actors_positions_inputs = NULL;
+
 vec2* game_actors_positions = NULL; // x,y positions clamped between -1 and +1
-vec2* game_actors_directions = NULL; // x,y normalized vectors
 vec2* game_actors_rotations = NULL;  //  x,y rotations, rotation_speeds
 
 size_t game_current_max_actor_count = 0;
@@ -35,11 +38,11 @@ AGE_RESULT game_reserve_memory_for_actors ()
     AGE_RESULT age_result = AGE_SUCCESS;
 
     game_current_max_actor_count += game_ACTOR_BATCH_SIZE;
-    
-    game_actors_positions = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
-    game_actors_directions = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
-    game_actors_rotations = (vec2*) calloc (game_current_max_actor_count, sizeof (vec2));
 
+    game_actors_positions = (vec2*)utils_calloc (game_current_max_actor_count, sizeof (vec2));
+    game_actors_rotations = (vec2*)utils_calloc (game_current_max_actor_count, sizeof (vec2));
+
+    game_actors_positions_inputs = (position_inputs*)utils_calloc (game_current_max_actor_count, sizeof (position_inputs));
 
 exit: // clean up allocations done in this function
 
@@ -97,7 +100,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
     {
         game_current_max_actor_count += game_ACTOR_BATCH_SIZE;
 
-        vec2* temp = (vec2*)realloc (game_actors_positions, sizeof (vec2) * game_current_max_actor_count);
+        vec2* temp = (vec2*)utils_realloc (game_actors_positions, sizeof (vec2) * game_current_max_actor_count);
         if (temp != NULL)
         {
             game_actors_positions = temp;
@@ -107,18 +110,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
             printf ("Could not realloc %d bytes for game_actors_transforms\n", sizeof (vec2) * game_current_max_actor_count);
         }
 
-        temp = (vec2*)realloc (game_actors_directions, sizeof (vec2) * game_current_max_actor_count);
-
-        if (temp != NULL)
-        {
-            game_actors_directions = temp;
-        }
-        else
-        {
-            printf ("Could not realloc %d bytes for actor_directions\n", sizeof (vec2) * game_current_max_actor_count);
-        }
-
-        temp = (vec2*)realloc (game_actors_rotations, sizeof (vec2) * game_current_max_actor_count);
+        temp = (vec2*)utils_realloc (game_actors_rotations, sizeof (vec2) * game_current_max_actor_count);
 
         if (temp != NULL)
         {
@@ -128,6 +120,18 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
         {
             printf ("Could not realloc %d bytes for actor_rotations\n", sizeof (vec2) * game_current_max_actor_count);
         }
+
+        position_inputs* pos_temp = (position_inputs*)utils_realloc (game_actors_positions_inputs, sizeof (position_inputs) * game_current_max_actor_count);
+
+        if (pos_temp != NULL)
+        {
+            game_actors_positions_inputs = pos_temp;
+        }
+        else
+        {
+            printf ("Could not realloc %d bytes for actor_position_inputs\n", sizeof (position_inputs) * game_current_max_actor_count);
+        }
+
 
         age_result = graphics_create_transforms_buffer ();
         if (age_result != AGE_SUCCESS)
@@ -139,18 +143,20 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
     game_actors_positions[game_actor_count].x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_positions[game_actor_count].y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
 
-    game_actors_directions[game_actor_count].x = (float)rand () / (float)RAND_MAX;
-    game_actors_directions[game_actor_count].y = (float)rand () / (float)RAND_MAX;
-    
     game_actors_rotations[game_actor_count].x = (float)rand () / (float)RAND_MAX * 360.f;
     game_actors_rotations[game_actor_count].y = (float)rand () / (float)RAND_MAX * 10.f;
+
+    game_actors_positions_inputs[game_actor_count].position.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_actor_count].position.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_actor_count].direction.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_actor_count].direction.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_positions_inputs[game_actor_count].speed = ((float)rand () / (float)RAND_MAX) / 100.f;
 
     ++game_actor_count;
 
     printf ("GAME\n");
-    for (size_t n = 0; n < game_actor_count; ++n)
+    for (size_t a = 0; a < game_actor_count; ++a)
     {
-        //printf ("Positions n = %d, x = %f, y = %f\n", n, game_actors_positions[n].x, game_actors_positions[n].y);
     }
 
     printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_actor_count, game_ACTOR_BATCH_SIZE);
@@ -203,9 +209,14 @@ AGE_RESULT game_update (void)
 
     for (size_t a = 0; a < game_actor_count; ++a)
     {
-        srand (rand ());
-        game_actors_positions[a].x += (((float)rand () / (float)RAND_MAX) * 2 - 1) / 100.f;
-        game_actors_positions[a].y += (((float)rand () / (float)RAND_MAX) * 2 - 1) / 100.f;
+        game_actors_positions_inputs[a].position.x += (game_actors_positions_inputs[a].direction.x * game_actors_positions_inputs[a].speed);
+        game_actors_positions_inputs[a].position.y += (game_actors_positions_inputs[a].direction.y * game_actors_positions_inputs[a].speed);
+    }
+
+    for (size_t a = 0; a < game_actor_count; ++a)
+    {
+        game_actors_positions[a].x = game_actors_positions_inputs[a].position.x;
+        game_actors_positions[a].y = game_actors_positions_inputs[a].position.y;
     }
 
     age_result = graphics_update_transforms_buffer();
@@ -234,9 +245,10 @@ exit:
 
 void game_exit (void)
 {
-    free (game_actors_positions);
-    free (game_actors_directions);
-    free (game_actors_rotations);
-
     graphics_exit ();
+
+    utils_free (game_actors_positions);
+    utils_free (game_actors_rotations);
+
+    utils_free (game_actors_positions_inputs);
 }
