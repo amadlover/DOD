@@ -113,7 +113,7 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
     game_actors_transform_inputs[game_live_actor_count].direction.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_inputs[game_live_actor_count].direction.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_inputs[game_live_actor_count].position_speed = ((float)rand () / (float)RAND_MAX) / 1000.f;
-    game_actors_transform_inputs[game_live_actor_count].rotation_speed = (((float)rand () / (float)RAND_MAX)) / 100.f;
+    game_actors_transform_inputs[game_live_actor_count].rotation_speed = (((float)rand () / (float)RAND_MAX)) / 50.f;
 
     ++game_live_actor_count;
 

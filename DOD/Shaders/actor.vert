@@ -15,14 +15,14 @@ layout (location = 0) out vec3 out_color;
 
 void main ()
 {
-    vec3 pos = in_position;
+    vec3 rotated_pos = vec3 ((in_position.x * cos (mat_buff.actor_rotation)) - (in_position.y * sin (mat_buff.actor_rotation)),
+                             (in_position.y * cos (mat_buff.actor_rotation)) + (in_position.x * sin (mat_buff.actor_rotation)), 
+                             in_position.z
+                            );
     
-    pos.x = (pos.x * cos (mat_buff.actor_rotation)) - (pos.y * sin (mat_buff.actor_rotation));
-    pos.y = (pos.y * cos (mat_buff.actor_rotation)) + (pos.x * sin (mat_buff.actor_rotation));
-    
-    //pos += vec3 (mat_buff.actor_position, 0);
+    vec3 final_pos = rotated_pos + vec3 (mat_buff.actor_position, 0);
 
-    gl_Position = vec4 (pos, 1);
+    gl_Position = vec4 (final_pos, 1);
 
     out_color = in_color;
 }
