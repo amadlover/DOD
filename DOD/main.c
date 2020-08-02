@@ -53,10 +53,21 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             break;
 
         case WM_RBUTTONDOWN:
-            game_process_right_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+            age_result = game_process_right_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+            if (age_result != AGE_SUCCESS)
+            {
+                log_error (age_result);
+                PostQuitMessage (age_result);
+            }
             break;
 
         case WM_MOUSEMOVE:
+            age_result = game_process_mouse_move (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+            if (age_result != AGE_SUCCESS)
+            {
+                log_error (age_result);
+                PostQuitMessage (age_result);
+            }
             break;
 
         default:

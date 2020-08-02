@@ -14,21 +14,11 @@ typedef struct vec3_
     float z;
 } vec3;
 
-typedef struct position_inputs_
-{
-    vec2 direction;
-    float speed;
-} position_inputs;
-
-typedef struct rotation_inputs_
-{
-    float speed;
-} rotation_inputs;
-
 typedef struct actor_transform_inputs_
 {
-    vec2 direction;
-    float position_speed;
+    vec2 forward_vector;
+    vec2 right_vector;
+    float forward_speed;
     float rotation_speed;
 } actor_transform_inputs;
 
@@ -37,3 +27,5 @@ typedef struct actor_transform_outputs_
     vec2 position;
     float rotation;
 } actor_transform_outputs;
+
+void vec2_normalize (vec2* in_vector);

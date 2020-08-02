@@ -56,9 +56,10 @@ VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 size_t descriptor_set_count = 0;
 
 const actor_transform_outputs** graphics_actors_transform_outputs = NULL;
-const size_t* graphics_actor_count = 0;
-const size_t* graphics_current_max_actor_count = 0;
-const size_t* graphics_ACTOR_BATCH_SIZE = 0;
+const actor_transform_outputs* graphics_player_transform_outputs = NULL;
+const size_t* graphics_actor_count = NULL;
+const size_t* graphics_current_max_actor_count = NULL;
+const size_t* graphics_ACTOR_BATCH_SIZE = NULL;
 
 VkBuffer transforms_buffer = VK_NULL_HANDLE;
 VkDeviceMemory transforms_buffer_memory = VK_NULL_HANDLE;
@@ -69,7 +70,7 @@ size_t total_transforms_size = 0;
 void* transforms_aligned_data = NULL;
 void* transforms_mapped_data = NULL;
 
-float background_positions[12] = { -1,-1,1, 1,-1,1, 1,1,1, -1,1,1 };
+float background_positions[12] = { -1,-1,0.9f, 1,-1,0.9f, 1,1,0.9f, -1,1,0.9f };
 float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
 size_t background_positions_size = sizeof (background_positions);
 size_t background_colors_size = sizeof (background_colors);
@@ -136,6 +137,7 @@ AGE_RESULT graphics_common_graphics_init (
 	HINSTANCE h_instance, 
 	HWND h_wnd,
 	const actor_transform_outputs** game_actors_transform_outputs, 
+	const actor_transform_outputs* game_player_transform_outputs,
 	const size_t* game_actor_count, 
 	const size_t* game_current_max_actor_count, 
 	const size_t* game_ACTOR_BATCH_SIZE
@@ -152,6 +154,7 @@ AGE_RESULT graphics_common_graphics_init (
 	graphics_current_max_actor_count = game_current_max_actor_count;
 	graphics_actor_count = game_actor_count;
 	graphics_actors_transform_outputs = game_actors_transform_outputs;
+	graphics_player_transform_outputs = game_player_transform_outputs;
 	graphics_ACTOR_BATCH_SIZE = game_ACTOR_BATCH_SIZE;
 
 	char** requested_instance_layers = NULL;
@@ -1432,10 +1435,10 @@ AGE_RESULT graphics_create_transforms_buffer (void)
 	size_t raw_size_per_transform = sizeof (actor_transform_outputs);
 	aligned_size_per_transform = (raw_size_per_transform + (size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1) & ~((size_t)physical_device_limits.minUniformBufferOffsetAlignment - 1);
 
-	total_transforms_size = aligned_size_per_transform * (*graphics_current_max_actor_count + 1);
+	total_transforms_size = aligned_size_per_transform * (*graphics_current_max_actor_count + 2);
 	if (transforms_aligned_data == NULL)
 	{
-		transforms_aligned_data = utils_calloc (*graphics_current_max_actor_count + 1, aligned_size_per_transform);
+		transforms_aligned_data = utils_malloc_zero (total_transforms_size);
 	}
 	else 
 	{
@@ -1528,9 +1531,11 @@ AGE_RESULT graphics_update_transforms_buffer (void)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
 
+	memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform), graphics_player_transform_outputs, sizeof (actor_transform_outputs)); 
+
 	for (size_t a = 0; a < *graphics_actor_count; ++a)
 	{
-		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (a + 1)), *graphics_actors_transform_outputs + a, sizeof (actor_transform_outputs));
+		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (a + 2)), *graphics_actors_transform_outputs + a, sizeof (actor_transform_outputs));
 	}
 
 	memcpy (transforms_mapped_data, transforms_aligned_data, aligned_size_per_transform * (*graphics_current_max_actor_count));
@@ -1599,6 +1604,13 @@ AGE_RESULT graphics_update_command_buffers (void)
 		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed (swapchain_command_buffers[i], background_index_count, 1, 0, 0, 0);
 
+		offset = aligned_size_per_transform;
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
+		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
+
 		for (size_t a = 0; a < *graphics_actor_count; ++a)
 		{
 			offset = aligned_size_per_transform * (a + 1);
@@ -1608,6 +1620,7 @@ AGE_RESULT graphics_update_command_buffers (void)
 			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
 		}
+
 		vkCmdEndRenderPass (swapchain_command_buffers[i]);
 
 		vk_result = vkEndCommandBuffer (swapchain_command_buffers[i]);

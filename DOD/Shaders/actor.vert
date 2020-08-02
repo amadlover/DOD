@@ -6,6 +6,7 @@ layout (set = 0, binding = 0) uniform mat_ubo
 {
     vec2 actor_position;
     float actor_rotation;
+    float actor_scale;
 } mat_buff;
 
 layout (location = 0) in vec3 in_position;

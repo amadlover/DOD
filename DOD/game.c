@@ -23,6 +23,8 @@
  *
  * */
 
+actor_transform_inputs game_player_transform_inputs = { 0 };
+actor_transform_outputs game_player_transform_outputs = { 0 };
 
 actor_transform_inputs* game_actors_transform_inputs = NULL;
 actor_transform_outputs* game_actors_transform_outputs = NULL;
@@ -30,6 +32,10 @@ actor_transform_outputs* game_actors_transform_outputs = NULL;
 size_t game_current_max_actor_count = 0;
 size_t game_live_actor_count = 0;
 const size_t game_ACTOR_BATCH_SIZE = 50;
+
+RECT window_rect;
+int32_t last_mouse_x;
+int32_t last_mouse_y;
 
 AGE_RESULT game_reserve_memory_for_actors ()
 {
@@ -49,6 +55,9 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    game_player_transform_inputs.forward_speed = 0.001f;
+    GetClientRect (h_wnd, &window_rect);
+
     srand (rand ());
 
     age_result = game_reserve_memory_for_actors ();
@@ -61,6 +70,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         h_instance,
         h_wnd,
         &game_actors_transform_outputs,
+        &game_player_transform_outputs,
         &game_live_actor_count,
         &game_current_max_actor_count,
         &game_ACTOR_BATCH_SIZE
@@ -88,7 +98,7 @@ exit:  // place to clean up local allocations
     return age_result;
 }
 
-AGE_RESULT game_add_actor (size_t x, size_t y)
+AGE_RESULT game_add_actor (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
@@ -110,9 +120,9 @@ AGE_RESULT game_add_actor (size_t x, size_t y)
     game_actors_transform_outputs[game_live_actor_count].position.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_outputs[game_live_actor_count].rotation = (float)rand () / (float)RAND_MAX * 360.f;
 
-    game_actors_transform_inputs[game_live_actor_count].direction.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_transform_inputs[game_live_actor_count].direction.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_transform_inputs[game_live_actor_count].position_speed = ((float)rand () / (float)RAND_MAX) / 1000.f;
+    game_actors_transform_inputs[game_live_actor_count].forward_vector.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_transform_inputs[game_live_actor_count].forward_vector.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
+    game_actors_transform_inputs[game_live_actor_count].forward_speed = ((float)rand () / (float)RAND_MAX) / 1000.f;
     game_actors_transform_inputs[game_live_actor_count].rotation_speed = (((float)rand () / (float)RAND_MAX)) / 50.f;
 
     ++game_live_actor_count;
@@ -126,12 +136,12 @@ exit:
     return age_result;;
 }
 
-AGE_RESULT game_process_left_mouse_click (const size_t x, const size_t y)
+AGE_RESULT game_process_left_mouse_click (const int32_t x, const int32_t y)
 {
     printf ("Left click at %d %d\n", x, y);
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    age_result = game_add_actor (x, y);
+    age_result = game_add_actor ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -179,7 +189,7 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_process_right_mouse_click (const size_t x, const size_t y)
+AGE_RESULT game_process_right_mouse_click (const int32_t x, const int32_t y)
 {
     printf ("Right click at %d %d\n", x, y);
 
@@ -201,18 +211,60 @@ exit:
     return age_result;
 }
 
+AGE_RESULT game_update_player_vectors (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    game_player_transform_inputs.forward_vector.x = ((float)last_mouse_x / ((float)window_rect.right - (float)window_rect.left) * 2 - 1) - game_player_transform_outputs.position.x;
+    game_player_transform_inputs.forward_vector.y = -((float)last_mouse_y / ((float)window_rect.bottom - (float)window_rect.top) * 2 - 1) - game_player_transform_outputs.position.y;
+
+    game_player_transform_inputs.right_vector.x = game_player_transform_inputs.forward_vector.y; 
+    game_player_transform_inputs.right_vector.y = -game_player_transform_inputs.forward_vector.x;
+
+    vec2_normalize (&game_player_transform_inputs.forward_vector);
+    vec2_normalize (&game_player_transform_inputs.right_vector);
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_process_mouse_move (const int32_t x, const int32_t y)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    if (x < 0 || y < 0)
+    {
+        goto exit;
+    }
+
+    last_mouse_x = x;
+    last_mouse_y = y;
+
+exit:
+    return age_result;
+}
+
 AGE_RESULT game_update (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    game_player_transform_outputs.position.x += game_player_transform_inputs.forward_vector.x * game_player_transform_inputs.forward_speed;
+    game_player_transform_outputs.position.y += game_player_transform_inputs.forward_vector.y * game_player_transform_inputs.forward_speed;
+
     for (size_t a = 0; a < game_live_actor_count; ++a)
     {
-        game_actors_transform_outputs[a].position.x += (game_actors_transform_inputs[a].direction.x * game_actors_transform_inputs[a].position_speed);
-        game_actors_transform_outputs[a].position.y += (game_actors_transform_inputs[a].direction.y * game_actors_transform_inputs[a].position_speed);
+        game_actors_transform_outputs[a].position.x += (game_actors_transform_inputs[a].forward_vector.x * game_actors_transform_inputs[a].forward_speed);
+        game_actors_transform_outputs[a].position.y += (game_actors_transform_inputs[a].forward_vector.y * game_actors_transform_inputs[a].forward_speed);
         game_actors_transform_outputs[a].rotation += (game_actors_transform_inputs[a].rotation_speed);
     }
 
-    age_result = graphics_update_transforms_buffer();
+    age_result = graphics_update_transforms_buffer ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+    age_result = game_update_player_vectors ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;

@@ -9,6 +9,7 @@ AGE_RESULT graphics_common_graphics_init (
     HINSTANCE h_instance, 
     HWND h_wnd, 
     const actor_transform_outputs** game_actors_transform_outputs, 
+    const actor_transform_outputs* game_player_trasnform_outputs,
     const size_t* game_actor_count, 
     const size_t* game_current_max_actor_count, 
     const size_t* game_ACTOR_BATCH_SIZE
