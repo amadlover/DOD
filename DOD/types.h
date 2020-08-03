@@ -17,9 +17,10 @@ typedef struct vec3_
 typedef struct actor_transform_inputs_
 {
     vec2 forward_vector;
-    vec2 right_vector;
     float forward_speed;
+    float rotation;
     float rotation_speed;
+    float damping;
 } actor_transform_inputs;
 
 typedef struct actor_transform_outputs_

@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 /*
  * OOP struct
@@ -55,7 +56,10 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.forward_speed = 0.001f;
+    game_player_transform_inputs.damping = 0.00001f;
+    game_player_transform_inputs.forward_vector.x = 0;
+    game_player_transform_inputs.forward_vector.y = 1;
+
     GetClientRect (h_wnd, &window_rect);
 
     srand (rand ());
@@ -118,7 +122,7 @@ AGE_RESULT game_add_actor (void)
 
     game_actors_transform_outputs[game_live_actor_count].position.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_outputs[game_live_actor_count].position.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_transform_outputs[game_live_actor_count].rotation = (float)rand () / (float)RAND_MAX * 360.f;
+    game_actors_transform_outputs[game_live_actor_count].rotation = (float)rand () / (float)RAND_MAX * 3.14f;
 
     game_actors_transform_inputs[game_live_actor_count].forward_vector.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_inputs[game_live_actor_count].forward_vector.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
@@ -215,14 +219,18 @@ AGE_RESULT game_update_player_vectors (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.forward_vector.x = ((float)last_mouse_x / ((float)window_rect.right - (float)window_rect.left) * 2 - 1) - game_player_transform_outputs.position.x;
-    game_player_transform_inputs.forward_vector.y = -((float)last_mouse_y / ((float)window_rect.bottom - (float)window_rect.top) * 2 - 1) - game_player_transform_outputs.position.y;
+    //game_player_transform_inputs.forward_vector.x = ((float)last_mouse_x / ((float)window_rect.right - (float)window_rect.left) * 2 - 1) - game_player_transform_outputs.position.x;
+    //game_player_transform_inputs.forward_vector.y = -((float)last_mouse_y / ((float)window_rect.bottom - (float)window_rect.top) * 2 - 1) - game_player_transform_outputs.position.y;
 
-    game_player_transform_inputs.right_vector.x = game_player_transform_inputs.forward_vector.y; 
-    game_player_transform_inputs.right_vector.y = -game_player_transform_inputs.forward_vector.x;
+    //vec2_normalize (&game_player_transform_inputs.forward_vector);
 
-    vec2_normalize (&game_player_transform_inputs.forward_vector);
-    vec2_normalize (&game_player_transform_inputs.right_vector);
+    float new_vector_x = (game_player_transform_inputs.forward_vector.x * (float)cos (game_player_transform_inputs.rotation)) - (game_player_transform_inputs.forward_vector.y * (float)sin (game_player_transform_inputs.rotation));
+    float new_vector_y = (game_player_transform_inputs.forward_vector.y * (float)cos (game_player_transform_inputs.rotation)) + (game_player_transform_inputs.forward_vector.x * (float)sin (game_player_transform_inputs.rotation));
+
+    game_player_transform_inputs.forward_vector.x = new_vector_x;
+    game_player_transform_inputs.forward_vector.y = new_vector_y;
+
+    printf ("forward: %f %f\n", game_player_transform_inputs.forward_vector.x, game_player_transform_inputs.forward_vector.y);
 
 exit:
     return age_result;
@@ -244,7 +252,55 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_update (void)
+AGE_RESULT game_process_char_pressed (const WPARAM w_param)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    switch (w_param)
+    {
+        case 0x77: // w
+            game_player_transform_inputs.forward_speed += 0.001f;
+            game_player_transform_inputs.forward_speed = min (game_player_transform_inputs.forward_speed, 0.01f);
+
+            break;
+        
+        case 0x73: // s
+            game_player_transform_inputs.forward_speed -= 0.001f;
+            game_player_transform_inputs.forward_speed = max (game_player_transform_inputs.forward_speed, -0.01f);
+
+            break;
+            
+        case 0x64: // d
+            game_player_transform_inputs.rotation -= 0.01f;
+            game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
+            printf ("rotation: %f\n", game_player_transform_inputs.rotation);
+        
+
+        case 0x61: // a
+            game_player_transform_inputs.rotation += 0.01f;
+            game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
+            printf ("rotation: %f\n", game_player_transform_inputs.rotation);
+            
+            age_result = game_update_player_vectors ();
+            if (age_result != AGE_SUCCESS)
+            {
+                goto exit;
+            }
+            break;
+        
+        case 0x20: // space bar
+            printf ("space\n");
+            break;
+
+        default:
+            break;
+    }
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_update_player_actor_output_positions (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
@@ -255,7 +311,39 @@ AGE_RESULT game_update (void)
     {
         game_actors_transform_outputs[a].position.x += (game_actors_transform_inputs[a].forward_vector.x * game_actors_transform_inputs[a].forward_speed);
         game_actors_transform_outputs[a].position.y += (game_actors_transform_inputs[a].forward_vector.y * game_actors_transform_inputs[a].forward_speed);
+
         game_actors_transform_outputs[a].rotation += (game_actors_transform_inputs[a].rotation_speed);
+    }
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_apply_player_damping (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    if (game_player_transform_inputs.forward_speed < 0)
+    {
+        game_player_transform_inputs.forward_speed += game_player_transform_inputs.damping;
+    }
+    else if (game_player_transform_inputs.forward_speed > 0)
+    {
+        game_player_transform_inputs.forward_speed -= game_player_transform_inputs.damping;
+    }
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_update (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    age_result = game_update_player_actor_output_positions ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
     }
 
     age_result = graphics_update_transforms_buffer ();
@@ -264,11 +352,11 @@ AGE_RESULT game_update (void)
         goto exit;
     }
 
-    age_result = game_update_player_vectors ();
+    age_result = game_apply_player_damping ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
-    }
+    } 
 
 exit: // clear function specific allocations
     return age_result;

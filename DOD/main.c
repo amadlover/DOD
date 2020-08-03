@@ -31,7 +31,13 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
             PostQuitMessage (0);
             break;
 
-        case WM_KEYDOWN:
+        case WM_CHAR:
+            age_result = game_process_char_pressed (w_param);
+            if (age_result != AGE_SUCCESS)
+            {
+                log_error (age_result);
+                PostQuitMessage (age_result);
+            }
             break;
 
         case WM_TIMER:
