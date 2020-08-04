@@ -14,6 +14,16 @@ typedef struct vec3_
     float z;
 } vec3;
 
+typedef struct player_transform_inputs_
+{
+    float v;
+    float u;
+    vec2 forward_vector;
+    float rotation;
+    float damping;
+    float mass;
+} player_transform_inputs;
+
 typedef struct actor_transform_inputs_
 {
     vec2 forward_vector;

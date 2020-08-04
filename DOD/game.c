@@ -24,7 +24,7 @@
  *
  * */
 
-actor_transform_inputs game_player_transform_inputs = { 0 };
+player_transform_inputs game_player_transform_inputs = { 0 };
 actor_transform_outputs game_player_transform_outputs = { 0 };
 
 actor_transform_inputs* game_actors_transform_inputs = NULL;
@@ -119,6 +119,8 @@ AGE_RESULT game_add_actor (void)
             goto exit;
         }
     }
+
+    srand (rand ());
 
     game_actors_transform_outputs[game_live_actor_count].position.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_outputs[game_live_actor_count].position.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
@@ -259,14 +261,10 @@ AGE_RESULT game_process_char_pressed (const WPARAM w_param)
     switch (w_param)
     {
         case 0x77: // w
-            game_player_transform_inputs.forward_speed += 0.001f;
-            game_player_transform_inputs.forward_speed = min (game_player_transform_inputs.forward_speed, 0.01f);
 
             break;
         
         case 0x73: // s
-            game_player_transform_inputs.forward_speed -= 0.001f;
-            game_player_transform_inputs.forward_speed = max (game_player_transform_inputs.forward_speed, -0.01f);
 
             break;
             
@@ -299,8 +297,8 @@ AGE_RESULT game_update_player_actor_output_positions (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_outputs.position.x += game_player_transform_inputs.forward_vector.x * game_player_transform_inputs.forward_speed;
-    game_player_transform_outputs.position.y += game_player_transform_inputs.forward_vector.y * game_player_transform_inputs.forward_speed;
+    game_player_transform_outputs.position.x += (game_player_transform_inputs.forward_vector.x * game_player_transform_inputs.v);
+    game_player_transform_outputs.position.y += (game_player_transform_inputs.forward_vector.y * game_player_transform_inputs.v);
 
     for (size_t a = 0; a < game_live_actor_count; ++a)
     {
@@ -317,15 +315,6 @@ exit:
 AGE_RESULT game_apply_player_damping (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
-
-    if (game_player_transform_inputs.forward_speed < 0)
-    {
-        game_player_transform_inputs.forward_speed += game_player_transform_inputs.damping;
-    }
-    else if (game_player_transform_inputs.forward_speed > 0)
-    {
-        game_player_transform_inputs.forward_speed -= game_player_transform_inputs.damping;
-    }
 
 exit:
     return age_result;
