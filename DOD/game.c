@@ -38,6 +38,8 @@ RECT window_rect;
 int32_t last_mouse_x;
 int32_t last_mouse_y;
 
+size_t graphics_delta_time = 0;
+
 AGE_RESULT game_reserve_memory_for_actors ()
 {
     AGE_RESULT age_result = AGE_SUCCESS;
@@ -261,7 +263,7 @@ AGE_RESULT game_process_char_pressed (const WPARAM w_param)
     switch (w_param)
     {
         case 0x77: // w
-
+            
             break;
         
         case 0x73: // s
@@ -320,7 +322,7 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_update (void)
+AGE_RESULT game_update (size_t delta_time)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
@@ -340,7 +342,9 @@ AGE_RESULT game_update (void)
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
-    } 
+    }
+
+    graphics_delta_time = delta_time;
 
 exit: // clear function specific allocations
     return age_result;

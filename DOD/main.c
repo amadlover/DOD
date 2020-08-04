@@ -10,74 +10,83 @@
 
 #define ID_GAME_TICK 1237
 
+unsigned long long last_tick_count = 0;
+
 LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    unsigned long long current_tick_count = 0;
+
     switch (msg)
     {
-        case WM_COMMAND:
-            break;
+    case WM_COMMAND:
+        break;
 
-        case WM_QUIT:
-            PostQuitMessage (0);
-            break;
+    case WM_QUIT:
+        PostQuitMessage (0);
+        break;
 
-        case WM_DESTROY:
-            PostQuitMessage (0);
-            break;
+    case WM_DESTROY:
+        PostQuitMessage (0);
+        break;
 
-        case WM_CLOSE:
-            PostQuitMessage (0);
-            break;
+    case WM_CLOSE:
+        PostQuitMessage (0);
+        break;
 
-        case WM_CHAR:
-            age_result = game_process_char_pressed (w_param);
-            if (age_result != AGE_SUCCESS)
-            {
-                log_error (age_result);
-                PostQuitMessage (age_result);
-            }
-            break;
+    case WM_CHAR:
+        age_result = game_process_char_pressed (w_param);
+        if (age_result != AGE_SUCCESS)
+        {
+            log_error (age_result);
+            PostQuitMessage (age_result);
+        }
+        break;
 
-        case WM_TIMER:
-            age_result = game_update ();
-            if (age_result != AGE_SUCCESS)
-            {
-                log_error (age_result);
-                PostQuitMessage (age_result);
-            }
-            break;
+    case WM_TIMER:
+        current_tick_count = GetTickCount ();
 
-        case WM_LBUTTONDOWN:
-            age_result = game_process_left_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
-            if (age_result != AGE_SUCCESS)
-            {
-                log_error (age_result);
-                PostQuitMessage (age_result);
-            }
-            break;
+        age_result = game_update ((size_t)(current_tick_count - last_tick_count));
+        last_tick_count = current_tick_count;
 
-        case WM_RBUTTONDOWN:
-            age_result = game_process_right_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
-            if (age_result != AGE_SUCCESS)
-            {
-                log_error (age_result);
-                PostQuitMessage (age_result);
-            }
-            break;
+        if (age_result != AGE_SUCCESS)
+        {
+            log_error (age_result);
+            PostQuitMessage (age_result);
+        }
 
-        case WM_MOUSEMOVE:
-            age_result = game_process_mouse_move (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
-            if (age_result != AGE_SUCCESS)
-            {
-                log_error (age_result);
-                PostQuitMessage (age_result);
-            }
-            break;
+        break;
 
-        default:
-            break;
+    case WM_LBUTTONDOWN:
+        age_result = game_process_left_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+        if (age_result != AGE_SUCCESS)
+        {
+            log_error (age_result);
+            PostQuitMessage (age_result);
+        }
+        break;
+
+    case WM_RBUTTONDOWN:
+        age_result = game_process_right_mouse_click (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+        if (age_result != AGE_SUCCESS)
+        {
+            log_error (age_result);
+            PostQuitMessage (age_result);
+        }
+        break;
+
+    case WM_MOUSEMOVE:
+        age_result = game_process_mouse_move (GET_X_LPARAM (l_param), GET_Y_LPARAM (l_param));
+        if (age_result != AGE_SUCCESS)
+        {
+            log_error (age_result);
+            PostQuitMessage (age_result);
+        }
+        break;
+
+    default:
+        break;
     }
 
     return DefWindowProc (h_wnd, msg, w_param, l_param);
@@ -138,7 +147,9 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         goto exit;
     }
 
-    SetTimer (h_wnd, ID_GAME_TICK, 8, NULL);
+    last_tick_count = GetTickCount64 ();
+
+    SetTimer (h_wnd, ID_GAME_TICK, 16, NULL);
 
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));
