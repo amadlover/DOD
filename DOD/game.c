@@ -39,7 +39,7 @@ int32_t last_mouse_x;
 int32_t last_mouse_y;
 
 size_t game_delta_time = 0;
-float player_acceleration = 0.00001;
+
 
 AGE_RESULT game_reserve_memory_for_actors ()
 {
@@ -59,9 +59,10 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.damping = 0.00001f;
+    game_player_transform_inputs.damping_factor = 0.9f;
     game_player_transform_inputs.forward_vector.x = 0;
     game_player_transform_inputs.forward_vector.y = 1;
+    game_player_transform_inputs.acceleration = 0.0001f;
 
     GetClientRect (h_wnd, &window_rect);
 
@@ -259,7 +260,7 @@ AGE_RESULT game_player_increase_speed ()
     AGE_RESULT age_result = AGE_SUCCESS;
 
     // v = u + at
-    float2 acceleration = { player_acceleration * game_player_transform_inputs.forward_vector.x , player_acceleration * game_player_transform_inputs.forward_vector.y };
+    float2 acceleration = { game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.x , game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.y };
 
     game_player_transform_inputs.v.x = game_player_transform_inputs.u.x + (acceleration.x * game_delta_time);
     game_player_transform_inputs.v.y = game_player_transform_inputs.u.y + (acceleration.y * game_delta_time);
@@ -275,7 +276,7 @@ AGE_RESULT game_player_decrease_speed ()
     AGE_RESULT age_result = AGE_SUCCESS;
 
     // v = u + at
-    float2 acceleration = { -player_acceleration * game_player_transform_inputs.forward_vector.x , -player_acceleration * game_player_transform_inputs.forward_vector.y };
+    float2 acceleration = { -game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.x , -game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.y };
 
     game_player_transform_inputs.v.x = game_player_transform_inputs.u.x + (acceleration.x * game_delta_time);
     game_player_transform_inputs.v.y = game_player_transform_inputs.u.y + (acceleration.y * game_delta_time);
@@ -367,6 +368,11 @@ AGE_RESULT game_apply_player_damping (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    game_player_transform_inputs.v.x *= game_player_transform_inputs.damping_factor;
+    game_player_transform_inputs.v.y *= game_player_transform_inputs.damping_factor;
+
+    game_player_transform_inputs.u.x *= game_player_transform_inputs.damping_factor;
+    game_player_transform_inputs.u.y *= game_player_transform_inputs.damping_factor;
 exit:
     return age_result;
 }
@@ -381,13 +387,13 @@ AGE_RESULT game_update (size_t delta_time)
         goto exit;
     }
 
-    age_result = graphics_update_transforms_buffer ();
+    age_result = game_apply_player_damping ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
     }
 
-    age_result = game_apply_player_damping ();
+    age_result = graphics_update_transforms_buffer ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;

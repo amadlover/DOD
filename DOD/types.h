@@ -16,11 +16,12 @@ typedef struct float3_
 
 typedef struct player_transform_inputs_
 {
+    float acceleration;
     float2 v;
     float2 u;
     float2 forward_vector;
     float rotation;
-    float damping;
+    float damping_factor;
 } player_transform_inputs;
 
 typedef struct actor_transform_inputs_
@@ -29,7 +30,6 @@ typedef struct actor_transform_inputs_
     float forward_speed;
     float rotation;
     float rotation_speed;
-    float damping;
 } actor_transform_inputs;
 
 typedef struct actor_transform_outputs_
@@ -38,4 +38,6 @@ typedef struct actor_transform_outputs_
     float rotation;
 } actor_transform_outputs;
 
-void vec2_normalize (float2* in_vector);
+
+float float2_length (const float2* in_vector);
+void float2_normalize (float2* in_vector);
