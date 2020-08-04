@@ -149,7 +149,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
 
     last_tick_count = GetTickCount64 ();
 
-    SetTimer (h_wnd, ID_GAME_TICK, 16, NULL);
+    SetTimer (h_wnd, ID_GAME_TICK, 8, NULL);
 
     MSG msg;
     ZeroMemory (&msg, sizeof (msg));

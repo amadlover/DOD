@@ -12,10 +12,10 @@
  * OOP struct
  *
  * struct actor {
- *     vec2 position_inputs;
- *     vec2 direction;
- *     vec2 rotation;
- *     vec2 scale;
+ *     float2 position_inputs;
+ *     float2 direction;
+ *     float2 rotation;
+ *     float2 scale;
  *     float positional_speed;
  *     float rotational_speed;
  *     char name[256];
@@ -38,7 +38,8 @@ RECT window_rect;
 int32_t last_mouse_x;
 int32_t last_mouse_y;
 
-size_t graphics_delta_time = 0;
+size_t game_delta_time = 0;
+float player_acceleration = 0.00001;
 
 AGE_RESULT game_reserve_memory_for_actors ()
 {
@@ -223,18 +224,15 @@ AGE_RESULT game_update_player_vectors (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    //game_player_transform_inputs.forward_vector.x = ((float)last_mouse_x / ((float)window_rect.right - (float)window_rect.left) * 2 - 1) - game_player_transform_outputs.position.x;
-    //game_player_transform_inputs.forward_vector.y = -((float)last_mouse_y / ((float)window_rect.bottom - (float)window_rect.top) * 2 - 1) - game_player_transform_outputs.position.y;
-
-    //vec2_normalize (&game_player_transform_inputs.forward_vector);
-
-    float new_vector_x = (game_player_transform_inputs.forward_vector.x * (float)cos (game_player_transform_inputs.rotation)) - (game_player_transform_inputs.forward_vector.y * (float)sin (game_player_transform_inputs.rotation));
-    float new_vector_y = (game_player_transform_inputs.forward_vector.y * (float)cos (game_player_transform_inputs.rotation)) + (game_player_transform_inputs.forward_vector.x * (float)sin (game_player_transform_inputs.rotation));
+    float new_vector_x = (game_player_transform_inputs.forward_vector.x * (float)cos (game_player_transform_inputs.rotation)) - 
+                         (game_player_transform_inputs.forward_vector.y * (float)sin (game_player_transform_inputs.rotation));
+    float new_vector_y = (game_player_transform_inputs.forward_vector.y * (float)cos (game_player_transform_inputs.rotation)) + 
+                         (game_player_transform_inputs.forward_vector.x * (float)sin (game_player_transform_inputs.rotation));
 
     game_player_transform_inputs.forward_vector.x = new_vector_x;
     game_player_transform_inputs.forward_vector.y = new_vector_y;
 
-    printf ("forward: %f %f\n", game_player_transform_inputs.forward_vector.x, game_player_transform_inputs.forward_vector.y);
+    printf ("%f %f\n", new_vector_x, new_vector_y);
 
 exit:
     return age_result;
@@ -256,6 +254,38 @@ exit:
     return age_result;
 }
 
+AGE_RESULT game_player_increase_speed ()
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    // v = u + at
+    float2 acceleration = { player_acceleration * game_player_transform_inputs.forward_vector.x , player_acceleration * game_player_transform_inputs.forward_vector.y };
+
+    game_player_transform_inputs.v.x = game_player_transform_inputs.u.x + (acceleration.x * game_delta_time);
+    game_player_transform_inputs.v.y = game_player_transform_inputs.u.y + (acceleration.y * game_delta_time);
+
+    game_player_transform_inputs.u = game_player_transform_inputs.v;
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_player_decrease_speed ()
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    // v = u + at
+    float2 acceleration = { -player_acceleration * game_player_transform_inputs.forward_vector.x , -player_acceleration * game_player_transform_inputs.forward_vector.y };
+
+    game_player_transform_inputs.v.x = game_player_transform_inputs.u.x + (acceleration.x * game_delta_time);
+    game_player_transform_inputs.v.y = game_player_transform_inputs.u.y + (acceleration.y * game_delta_time);
+
+    game_player_transform_inputs.u = game_player_transform_inputs.v;
+
+exit:
+    return age_result;;
+}
+
 AGE_RESULT game_process_char_pressed (const WPARAM w_param)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
@@ -263,22 +293,41 @@ AGE_RESULT game_process_char_pressed (const WPARAM w_param)
     switch (w_param)
     {
         case 0x77: // w
-            
+            age_result = game_player_increase_speed ();
+            if (age_result != AGE_SUCCESS)
+            {
+                goto exit;
+            }
             break;
         
         case 0x73: // s
-
+            age_result = game_player_decrease_speed ();
+            if (age_result != AGE_SUCCESS)
+            {
+                goto exit;
+            }
             break;
             
         case 0x64: // d
             game_player_transform_inputs.rotation -= 0.1f;
+
+            age_result = game_update_player_vectors ();
+            if (age_result != AGE_SUCCESS)
+            {
+                goto exit;
+            }
             game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
 
             break;
-        
 
         case 0x61: // a
             game_player_transform_inputs.rotation += 0.1f;
+
+            age_result = game_update_player_vectors ();
+            if (age_result != AGE_SUCCESS)
+            {
+                goto exit;
+            }
             game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
 
             break;
@@ -299,8 +348,8 @@ AGE_RESULT game_update_player_actor_output_positions (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_outputs.position.x += (game_player_transform_inputs.forward_vector.x * game_player_transform_inputs.v);
-    game_player_transform_outputs.position.y += (game_player_transform_inputs.forward_vector.y * game_player_transform_inputs.v);
+    game_player_transform_outputs.position.x += game_player_transform_inputs.v.x;
+    game_player_transform_outputs.position.y += game_player_transform_inputs.v.y;
 
     for (size_t a = 0; a < game_live_actor_count; ++a)
     {
@@ -344,7 +393,7 @@ AGE_RESULT game_update (size_t delta_time)
         goto exit;
     }
 
-    graphics_delta_time = delta_time;
+    game_delta_time = delta_time;
 
 exit: // clear function specific allocations
     return age_result;

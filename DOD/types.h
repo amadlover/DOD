@@ -1,32 +1,31 @@
 #pragma once
 
 
-typedef struct vec2_
+typedef struct float2_
 {
     float x;
     float y;
-} vec2;
+} float2;
 
-typedef struct vec3_
+typedef struct float3_
 {
     float x;
     float y;
     float z;
-} vec3;
+} float3;
 
 typedef struct player_transform_inputs_
 {
-    float v;
-    float u;
-    vec2 forward_vector;
+    float2 v;
+    float2 u;
+    float2 forward_vector;
     float rotation;
     float damping;
-    float mass;
 } player_transform_inputs;
 
 typedef struct actor_transform_inputs_
 {
-    vec2 forward_vector;
+    float2 forward_vector;
     float forward_speed;
     float rotation;
     float rotation_speed;
@@ -35,8 +34,8 @@ typedef struct actor_transform_inputs_
 
 typedef struct actor_transform_outputs_
 {
-    vec2 position;
+    float2 position;
     float rotation;
 } actor_transform_outputs;
 
-void vec2_normalize (vec2* in_vector);
+void vec2_normalize (float2* in_vector);
