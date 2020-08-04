@@ -59,7 +59,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.damping_factor = 0.9f;
+    game_player_transform_inputs.damping_factor = 0.99f;
     game_player_transform_inputs.forward_vector.x = 0;
     game_player_transform_inputs.forward_vector.y = 1;
     game_player_transform_inputs.acceleration = 0.0001f;
@@ -225,15 +225,16 @@ AGE_RESULT game_update_player_vectors (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    float new_vector_x = (game_player_transform_inputs.forward_vector.x * (float)cos (game_player_transform_inputs.rotation)) - 
-                         (game_player_transform_inputs.forward_vector.y * (float)sin (game_player_transform_inputs.rotation));
-    float new_vector_y = (game_player_transform_inputs.forward_vector.y * (float)cos (game_player_transform_inputs.rotation)) + 
-                         (game_player_transform_inputs.forward_vector.x * (float)sin (game_player_transform_inputs.rotation));
+    printf ("%f\r", game_player_transform_inputs.rotation);
+
+    float new_vector_x = (game_player_transform_inputs.forward_vector.x * cosf (game_player_transform_inputs.rotation)) -
+                         (game_player_transform_inputs.forward_vector.y * sinf (game_player_transform_inputs.rotation));
+
+    float new_vector_y = (game_player_transform_inputs.forward_vector.y * cosf (game_player_transform_inputs.rotation)) +
+                         (game_player_transform_inputs.forward_vector.x * sinf (game_player_transform_inputs.rotation));
 
     game_player_transform_inputs.forward_vector.x = new_vector_x;
     game_player_transform_inputs.forward_vector.y = new_vector_y;
-
-    printf ("%f %f\n", new_vector_x, new_vector_y);
 
 exit:
     return age_result;
@@ -373,6 +374,7 @@ AGE_RESULT game_apply_player_damping (void)
 
     game_player_transform_inputs.u.x *= game_player_transform_inputs.damping_factor;
     game_player_transform_inputs.u.y *= game_player_transform_inputs.damping_factor;
+
 exit:
     return age_result;
 }
