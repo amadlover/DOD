@@ -271,21 +271,16 @@ AGE_RESULT game_process_char_pressed (const WPARAM w_param)
             break;
             
         case 0x64: // d
-            game_player_transform_inputs.rotation -= 0.01f;
+            game_player_transform_inputs.rotation -= 0.1f;
             game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
-            printf ("rotation: %f\n", game_player_transform_inputs.rotation);
+
+            break;
         
 
         case 0x61: // a
-            game_player_transform_inputs.rotation += 0.01f;
+            game_player_transform_inputs.rotation += 0.1f;
             game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
-            printf ("rotation: %f\n", game_player_transform_inputs.rotation);
-            
-            age_result = game_update_player_vectors ();
-            if (age_result != AGE_SUCCESS)
-            {
-                goto exit;
-            }
+
             break;
         
         case 0x20: // space bar
