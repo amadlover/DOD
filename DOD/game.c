@@ -195,6 +195,7 @@ AGE_RESULT game_remove_actor (void)
 
         graphics_check_data_from_game ();
     }
+
 exit:
     return age_result;
 }
