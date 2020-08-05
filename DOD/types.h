@@ -22,7 +22,14 @@ typedef struct player_transform_inputs_
     float2 forward_vector;
     float rotation;
     float damping_factor;
+    float firing_rate;
 } player_transform_inputs;
+
+typedef struct bullet_transform_inputs_
+{
+    float2 forward_vector;
+    float speed;
+} bullet_transform_inputs;
 
 typedef struct actor_transform_inputs_
 {

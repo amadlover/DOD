@@ -29,6 +29,9 @@
 player_transform_inputs game_player_transform_inputs = { 0 };
 actor_transform_outputs game_player_transform_outputs = { 0 };
 
+bullet_transform_inputs* game_bullets_transform_input = NULL;
+actor_transform_outputs* game_bullets_transform_output = NULL;
+
 actor_transform_inputs* game_actors_transform_inputs = NULL;
 actor_transform_outputs* game_actors_transform_outputs = NULL;
 
@@ -289,6 +292,14 @@ AGE_RESULT game_player_decrease_speed ()
 
 exit:
     return age_result;;
+}
+
+AGE_RESULT game_shoot_bullet (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+    
+exit;
+    return age_result;
 }
 
 AGE_RESULT game_process_char_pressed (const WPARAM w_param)
