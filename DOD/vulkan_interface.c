@@ -359,6 +359,7 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR (physical_device, surface, &surface_capabilities);
 
+	current_extent = surface_capabilities.currentExtent;
 	size_t surface_format_count = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR (physical_device, surface, &surface_format_count, NULL);
 
@@ -475,7 +476,7 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 		&device_features
 	};
 
-	vk_result = vkCreateDevice (physical_device, &device_create_info, NULL, &graphics_device);
+	vk_result = vkCreateDevice (physical_device, &device_create_info, NULL, &device);
 
 	if (vk_result != VK_SUCCESS)
 	{
@@ -504,7 +505,7 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 		VK_NULL_HANDLE
 	};
 
-	vk_result = vkCreateSwapchainKHR (graphics_device, &swapchain_create_info, NULL, &swapchain);
+	vk_result = vkCreateSwapchainKHR (device, &swapchain_create_info, NULL, &swapchain);
 
 	if (vk_result != VK_SUCCESS)
 	{
@@ -512,9 +513,9 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 		goto exit;
 	}
 
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_image_count, NULL);
+	vkGetSwapchainImagesKHR (device, swapchain, &swapchain_image_count, NULL);
 	swapchain_images = (VkImage*)utils_calloc (swapchain_image_count, sizeof (VkImage));
-	vkGetSwapchainImagesKHR (graphics_device, swapchain, &swapchain_image_count, swapchain_images);
+	vkGetSwapchainImagesKHR (device, swapchain, &swapchain_image_count, swapchain_images);
 	swapchain_image_views = (VkImageView*)utils_calloc (swapchain_image_count, sizeof (VkImageView));
 
 	VkImageSubresourceRange subresource_range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
@@ -532,7 +533,7 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 	for (size_t i = 0; i < swapchain_image_count; ++i)
 	{
 		image_view_create_info.image = swapchain_images[i];
-		vk_result = vkCreateImageView (graphics_device, &image_view_create_info, NULL, swapchain_image_views + i);
+		vk_result = vkCreateImageView (device, &image_view_create_info, NULL, swapchain_image_views + i);
 
 		if (vk_result != VK_SUCCESS)
 		{
@@ -541,85 +542,13 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 		}
 	}
 
-
 	size_t graphics_queue_index = 0;
 	size_t compute_queue_index = graphics_queue_family_index == compute_queue_family_index ? 1 : 0;
 	size_t transfer_queue_index = transfer_queue_family_index == compute_queue_family_index ? compute_queue_index + 1 : 0;
 
-	vkGetDeviceQueue (graphics_device, graphics_queue_family_index, graphics_queue_index, &graphics_queue);
-	vkGetDeviceQueue (graphics_device, compute_queue_family_index, compute_queue_index, &compute_queue);
-	vkGetDeviceQueue (graphics_device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
-
-
-	VkDescriptorPoolSize descriptor_pool_size = {
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1
-	};
-
-	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		NULL,
-		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		1,
-		1,
-		&descriptor_pool_size
-	};
-	vk_result = vkCreateDescriptorPool (graphics_device, &descriptor_pool_create_info, NULL, &descriptor_pool);
-
-	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
-		0,
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1,
-		VK_SHADER_STAGE_VERTEX_BIT,
-		NULL
-	};
-
-	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		NULL,
-		0,
-		1,
-		&descriptor_layout_binding
-	};
-
-	vk_result = vkCreateDescriptorSetLayout (graphics_device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
-		goto exit;
-	}
-
-	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-		NULL,
-		descriptor_pool,
-		1,
-		&descriptor_set_layout
-	};
-
-	vk_result = vkAllocateDescriptorSets (graphics_device, &descriptor_set_allocate_info, &descriptor_set);
-	if (vk_result)
-	{
-		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
-		goto exit;
-	}
-
-	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		NULL,
-		0,
-		1,
-		&descriptor_set_layout,
-		0,
-		NULL
-	};
-
-	vk_result = vkCreatePipelineLayout (graphics_device, &pipeline_layout_create_info, NULL, &graphics_pipeline_layout);
-	if (vk_result)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_PIPELINE_LAYOUT;
-		goto exit;
-	}
+	vkGetDeviceQueue (device, graphics_queue_family_index, graphics_queue_index, &graphics_queue);
+	vkGetDeviceQueue (device, compute_queue_family_index, compute_queue_index, &compute_queue);
+	vkGetDeviceQueue (device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
 
 exit: // clean up allocation made within the function
 
@@ -648,12 +577,50 @@ exit: // clean up allocation made within the function
 	utils_free (requested_device_extensions);
 
 	return age_result;
-
-exit:
-    return age_result;
 }
 
 void vulkan_interface_shutdown (void)
 {
+	if (swapchain_image_views)
+	{
+		for (size_t i = 0; i < swapchain_image_count; ++i)
+		{
+			if (swapchain_image_views[i] != VK_NULL_HANDLE)
+			{
+				vkDestroyImageView (device, swapchain_image_views[i], NULL);
+			}
+		}
 
+		utils_free (swapchain_image_views);
+	}
+
+	if (swapchain != VK_NULL_HANDLE)
+	{
+		vkDestroySwapchainKHR (device, swapchain, NULL);
+	}
+
+	utils_free (swapchain_images);
+
+	if (device != VK_NULL_HANDLE)
+	{
+		vkDestroyDevice (device, NULL);
+	}
+
+	if (surface != VK_NULL_HANDLE)
+	{
+		vkDestroySurfaceKHR (instance, surface, NULL);
+	}
+
+	if (is_validation_needed)
+	{
+		if (debug_utils_messenger != VK_NULL_HANDLE)
+		{
+			destroy_debug_utils_messenger (instance, debug_utils_messenger, NULL);
+		}
+	}
+
+    if (instance != VK_NULL_HANDLE)
+    {
+        vkDestroyInstance (instance, NULL);
+    }
 }

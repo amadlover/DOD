@@ -1,6 +1,7 @@
 #include "game.h"
 #include "graphics.h"
 #include "types.h"
+#include "vulkan_interface.h"
 
 #include "utils.h"
 
@@ -61,6 +62,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 
     game_player_transform_inputs.damping_factor = 0.975f;
     game_player_transform_inputs.forward_vector.x = 0;
+
     game_player_transform_inputs.forward_vector.y = 1;
     game_player_transform_inputs.acceleration = 0.0001f;
 
@@ -74,29 +76,31 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         goto exit;
     }
 
-    age_result = graphics_common_graphics_init (
-        h_instance,
-        h_wnd,
-        &game_actors_transform_outputs,
-        &game_player_transform_outputs,
-        &game_live_actor_count,
-        &game_current_max_actor_count,
-        &game_ACTOR_BATCH_SIZE
-    );
-
+    age_result = vulkan_interface_init (h_instance, h_wnd);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
     }
 
-    age_result = graphics_create_transforms_buffer ();
+    age_result = graphics_create_descriptor_sets ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+    age_result = graphics_create_transforms_buffer (game_current_max_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
     }
 
     age_result = graphics_init ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
 
+    age_result = graphics_update_command_buffers (game_live_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -117,7 +121,7 @@ AGE_RESULT game_add_actor (void)
         game_actors_transform_inputs = (actor_transform_inputs*) utils_realloc (game_actors_transform_inputs, sizeof (actor_transform_inputs) * game_current_max_actor_count);
         game_actors_transform_outputs = (actor_transform_outputs*) utils_realloc (game_actors_transform_outputs, sizeof (actor_transform_outputs) * game_current_max_actor_count);
 
-        age_result = graphics_create_transforms_buffer ();
+        age_result = graphics_create_transforms_buffer (game_current_max_actor_count);
         if (age_result != AGE_SUCCESS)
         {
             goto exit;
@@ -140,8 +144,6 @@ AGE_RESULT game_add_actor (void)
     printf ("GAME\n");
     printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_live_actor_count, game_ACTOR_BATCH_SIZE);
 
-    graphics_check_data_from_game ();
-    
 exit:
     return age_result;;
 }
@@ -157,14 +159,14 @@ AGE_RESULT game_process_left_mouse_click (const int32_t x, const int32_t y)
         goto exit;
     }
     
-    age_result = graphics_update_command_buffers ();
+    age_result = graphics_update_command_buffers (game_live_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
     }
 
 exit:
-    return age_result;;
+    return age_result;
 }
 
 AGE_RESULT game_remove_actor (void)
@@ -192,8 +194,6 @@ AGE_RESULT game_remove_actor (void)
 
         printf ("GAME\n");
         printf ("current max actors %d, actor count %d ACTOR BATCH SIZE %d\n", game_current_max_actor_count, game_live_actor_count, game_ACTOR_BATCH_SIZE);
-
-        graphics_check_data_from_game ();
     }
 
 exit:
@@ -212,7 +212,7 @@ AGE_RESULT game_process_right_mouse_click (const int32_t x, const int32_t y)
         goto exit;
     }
 
-    age_result = graphics_update_command_buffers ();
+    age_result = graphics_update_command_buffers (game_live_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -397,7 +397,7 @@ AGE_RESULT game_update (size_t delta_time)
         goto exit;
     }
 
-    age_result = graphics_update_transforms_buffer ();
+    age_result = graphics_update_transforms_buffer (&game_player_transform_outputs, game_actors_transform_outputs, game_live_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -426,7 +426,8 @@ exit:
 void game_shutdown (void)
 {
     graphics_shutdown ();
-
+    vulkan_interface_shutdown ();
+    
     utils_free (game_actors_transform_inputs);
     utils_free (game_actors_transform_outputs);
 }
