@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 /*
  * OOP struct
@@ -68,7 +69,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 
     GetClientRect (h_wnd, &window_rect);
 
-    srand (rand ());
+    srand (time (NULL));
 
     age_result = game_reserve_memory_for_actors ();
     if (age_result != AGE_SUCCESS)
