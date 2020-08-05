@@ -422,9 +422,9 @@ exit:
     return age_result;
 }
 
-void game_exit (void)
+void game_shutdown (void)
 {
-    graphics_exit ();
+    graphics_shutdown ();
 
     utils_free (game_actors_transform_inputs);
     utils_free (game_actors_transform_outputs);

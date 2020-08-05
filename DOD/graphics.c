@@ -1721,7 +1721,7 @@ exit:
 	return age_result;
 }
 
-void graphics_exit (void)
+void graphics_shutdown (void)
 {
 	vkQueueWaitIdle (graphics_queue);
 

@@ -183,7 +183,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
     KillTimer (h_wnd, ID_GAME_TICK);
 
  exit:
-    game_exit ();
+    game_shutdown ();
 
     DestroyWindow (h_wnd);
 

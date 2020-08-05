@@ -19,7 +19,7 @@ AGE_RESULT graphics_update_command_buffers (void);
 AGE_RESULT graphics_create_transforms_buffer (void);
 AGE_RESULT graphics_update_transforms_buffer (void);
 AGE_RESULT graphics_submit_present (void);
-void graphics_exit (void);
+void graphics_shutdown (void);
 
 
 void graphics_check_data_from_game (void);
