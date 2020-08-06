@@ -30,7 +30,7 @@ bool is_w_pressed = false;
 bool is_s_pressed = false;
 bool is_d_pressed = false;
 bool is_a_pressed = false;
-bool is_space_pressed = false;
+bool is_space_bar_pressed = false;
 bool is_up_arrow_pressed = false;
 bool is_down_arrow_pressed = false;
 bool is_right_arrow_pressed = false;
@@ -383,7 +383,7 @@ AGE_RESULT game_process_key_down (const WPARAM w_param)
         break;
 
         case 0x20: // space
-        is_space_pressed = true;
+        is_space_bar_pressed = true;
         break;
 
         default:
@@ -416,10 +416,6 @@ AGE_RESULT game_process_key_up (const WPARAM w_param)
         is_a_pressed = false;
         break;
 
-        case 0x20: // space
-        is_space_pressed = false;
-        break;
-
         case 0x26: // up arrow
         is_up_arrow_pressed = false;
         break;
@@ -434,6 +430,10 @@ AGE_RESULT game_process_key_up (const WPARAM w_param)
 
         case 0x25: // left arrow
         is_left_arrow_pressed = false;
+        break;
+
+        case 0x20: // space
+        is_space_bar_pressed = false;
         break;
 
         default:
@@ -477,7 +477,7 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_update (size_t delta_time)
+AGE_RESULT game_process_player_input (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
@@ -517,7 +517,7 @@ AGE_RESULT game_update (size_t delta_time)
         }
     }
 
-    if (is_space_pressed)
+    if (is_space_bar_pressed)
     {
         age_result = game_player_shoot_bullet ();
         if (age_result != AGE_SUCCESS)
@@ -526,6 +526,20 @@ AGE_RESULT game_update (size_t delta_time)
         }
     }
 
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_update (size_t delta_time)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    age_result = game_process_player_input ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+   
     age_result = game_update_player_actor_output_positions ();
     if (age_result != AGE_SUCCESS)
     {
