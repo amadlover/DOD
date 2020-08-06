@@ -256,11 +256,10 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_player_increase_speed ()
+AGE_RESULT game_player_increase_speed (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    // v = u + at
     float2 acceleration = { 
         game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.x, 
         game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.y 
@@ -275,11 +274,10 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_player_decrease_speed ()
+AGE_RESULT game_player_decrease_speed (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    // v = u + at
     float2 acceleration = { 
         -game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.x,
         -game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.y 
@@ -298,7 +296,7 @@ AGE_RESULT game_shoot_bullet (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
     
-exit;
+exit:
     return age_result;
 }
 

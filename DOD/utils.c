@@ -98,7 +98,7 @@ void utils_get_files_in_folder (const char* partial_folder_path, file_path** out
 	} while (FindNextFile (find_handle, &ffd) != 0);
 }
 
-void utils_read_image_from_uri (const char* file_path, const char* uri, int* width, int* height, int* bpp, uint8_t* pixels)
+void utils_import_texture (const char* file_path, const char* uri, int* width, int* height, int* bpp, uint8_t* pixels)
 {
 	char full_path[MAX_PATH];
 	utils_get_full_texture_path_from_uri (file_path, uri, full_path);

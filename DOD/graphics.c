@@ -20,8 +20,8 @@ VkSemaphore wait_semaphore = VK_NULL_HANDLE;
 VkSemaphore* swapchain_signal_semaphores = NULL;
 VkFence* swapchain_fences = NULL;
 
-VkBuffer vertex_index_buffer = VK_NULL_HANDLE;
-VkDeviceMemory vertex_index_memory = VK_NULL_HANDLE;
+VkBuffer vertex_index_images_buffer = VK_NULL_HANDLE;
+VkDeviceMemory vertex_index_buffer_memory = VK_NULL_HANDLE;
 
 VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
 VkPipeline graphics_pipeline = VK_NULL_HANDLE;
@@ -40,7 +40,7 @@ void* transforms_aligned_data = NULL;
 void* transforms_mapped_data = NULL;
 
 float background_positions[12] = { -1,-1,0.9f, 1,-1,0.9f, 1,1,0.9f, -1,1,0.9f };
-float background_colors[12] = {1,0,0, 0,1,0, 0,0,1, 1,1,1};
+float background_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
 size_t background_positions_size = sizeof (background_positions);
 size_t background_colors_size = sizeof (background_colors);
 size_t background_indices[6] = { 0,1,2, 0,2,3 };
@@ -48,13 +48,16 @@ size_t background_indices_size = sizeof (background_indices);
 size_t background_index_count = 6;
 
 float actor_positions[9] = { -0.1f,0,0.5f, 0.1f,0,0.5f, 0,0.1f,0.5f };
-float actor_colors[9] = {1,0,0, 0,1,0, 0,0,1 };
+float actor_colors[9] = { 1,0,0, 0,1,0, 0,0,1 };
 size_t actor_positions_size = sizeof (actor_positions);
 size_t actor_colors_size = sizeof (actor_colors);
 size_t actor_indices[3] = { 0,1,2 };
 size_t actor_indices_size = sizeof (actor_indices);
 size_t actor_index_count = 3;
 
+size_t player_image_size = 0;
+size_t asteroid_image_size = 0;
+size_t bullet_image_size = 0;
 
 AGE_RESULT graphics_create_descriptor_sets (void)
 {
@@ -290,10 +293,10 @@ AGE_RESULT graphics_init (void)
 		}
 	}
 
-	VkBuffer staging_vertex_index_buffer = VK_NULL_HANDLE;
-	VkDeviceMemory staging_vertex_index_memory = VK_NULL_HANDLE;
+	VkBuffer staging_vertex_index_images_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_vertex_index_images_memory = VK_NULL_HANDLE;
 
-	VkBufferCreateInfo vertex_index_buffer_create_info = {
+	VkBufferCreateInfo vertex_index_buffer_images_create_info = {
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		NULL,
 		0,
@@ -309,7 +312,7 @@ AGE_RESULT graphics_init (void)
 		NULL
 	};
 
-	vk_result = vkCreateBuffer (device, &vertex_index_buffer_create_info, NULL, &staging_vertex_index_buffer);
+	vk_result = vkCreateBuffer (device, &vertex_index_buffer_images_create_info, NULL, &staging_vertex_index_images_buffer);
 
 	if (vk_result != VK_SUCCESS)
 	{
@@ -318,7 +321,7 @@ AGE_RESULT graphics_init (void)
 	}
 
 	VkMemoryRequirements memory_requirements;
-	vkGetBufferMemoryRequirements (device, staging_vertex_index_buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements (device, staging_vertex_index_images_buffer, &memory_requirements);
 
 	uint32_t required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	uint32_t required_memory_type_index = 0;
@@ -339,14 +342,14 @@ AGE_RESULT graphics_init (void)
 		required_memory_type_index
 	};
 
-	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &staging_vertex_index_memory);
+	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &staging_vertex_index_images_memory);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
 		goto exit;
 	}
 
-	vk_result = vkBindBufferMemory (device, staging_vertex_index_buffer, staging_vertex_index_memory, 0);
+	vk_result = vkBindBufferMemory (device, staging_vertex_index_images_buffer, staging_vertex_index_images_memory, 0);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
@@ -357,7 +360,7 @@ AGE_RESULT graphics_init (void)
 
 	vk_result = vkMapMemory (
 		device, 
-		staging_vertex_index_memory,
+		staging_vertex_index_images_memory,
 		0,
 		(VkDeviceSize)background_positions_size,
 		0, 
@@ -370,11 +373,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_positions, background_positions_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	vkUnmapMemory (device, staging_vertex_index_images_memory);
 
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_memory,
+		staging_vertex_index_images_memory,
 		(VkDeviceSize)background_positions_size,
 		(VkDeviceSize)background_colors_size,
 		0, 
@@ -387,11 +390,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_colors, background_colors_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	vkUnmapMemory (device, staging_vertex_index_images_memory);
 
 	vk_result = vkMapMemory (
 		device, 
-		staging_vertex_index_memory,
+		staging_vertex_index_images_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
 		(VkDeviceSize)background_indices_size,
 		0, 
@@ -404,11 +407,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_indices, background_indices_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	vkUnmapMemory (device, staging_vertex_index_images_memory);
 
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_memory,
+		staging_vertex_index_images_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size,
 		(VkDeviceSize)actor_positions_size,
 		0, 
@@ -421,11 +424,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, actor_positions, actor_positions_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	vkUnmapMemory (device, staging_vertex_index_images_memory);
 	
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_memory,
+		staging_vertex_index_images_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size,
 		(VkDeviceSize)actor_colors_size,
 		0,
@@ -438,11 +441,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, actor_colors, actor_colors_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	vkUnmapMemory (device, staging_vertex_index_images_memory);
 
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_memory,
+		staging_vertex_index_images_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size + (VkDeviceSize)actor_colors_size,
 		(VkDeviceSize)actor_indices_size,
 		0,
@@ -455,18 +458,18 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, actor_indices, actor_indices_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	vkUnmapMemory (device, staging_vertex_index_images_memory);
 
-	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	vertex_index_buffer_images_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-	vk_result = vkCreateBuffer (device, &vertex_index_buffer_create_info, NULL, &vertex_index_buffer);
+	vk_result = vkCreateBuffer (device, &vertex_index_buffer_images_create_info, NULL, &vertex_index_images_buffer);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
 		goto exit;
 	}
 
-	vkGetBufferMemoryRequirements (device, vertex_index_buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements (device, vertex_index_images_buffer, &memory_requirements);
 
 	required_memory_types = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	required_memory_type_index = 0;
@@ -483,14 +486,14 @@ AGE_RESULT graphics_init (void)
 	memory_allocate_info.allocationSize = memory_requirements.size;
 	memory_allocate_info.memoryTypeIndex = required_memory_type_index;
 
-	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &vertex_index_memory);
+	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &vertex_index_buffer_memory);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
 		goto exit;
 	}
 
-	vk_result = vkBindBufferMemory (device, vertex_index_buffer, vertex_index_memory, 0);
+	vk_result = vkBindBufferMemory (device, vertex_index_images_buffer, vertex_index_buffer_memory, 0);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
@@ -548,7 +551,7 @@ AGE_RESULT graphics_init (void)
 										(VkDeviceSize)actor_colors_size +
 										(VkDeviceSize)actor_indices_size 
 								};
-	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_buffer, vertex_index_buffer, 1, &buffer_copy);
+	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_images_buffer, vertex_index_images_buffer, 1, &buffer_copy);
 
 	vk_result = vkEndCommandBuffer (copy_command_buffer);
 	if (vk_result != VK_SUCCESS)
@@ -771,14 +774,14 @@ AGE_RESULT graphics_init (void)
 	}
 
 exit: // clear function specific allocations before exit
-	if (staging_vertex_index_buffer != VK_NULL_HANDLE)
+	if (staging_vertex_index_images_buffer != VK_NULL_HANDLE)
 	{
-		vkDestroyBuffer (device, staging_vertex_index_buffer, NULL);
+		vkDestroyBuffer (device, staging_vertex_index_images_buffer, NULL);
 	}
 	
-	if (staging_vertex_index_memory != VK_NULL_HANDLE)
+	if (staging_vertex_index_images_memory != VK_NULL_HANDLE)
 	{
-		 vkFreeMemory (device, staging_vertex_index_memory, NULL);
+		 vkFreeMemory (device, staging_vertex_index_images_memory, NULL);
 	}
 
 	if (copy_command_buffer != VK_NULL_HANDLE)
@@ -1071,25 +1074,25 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		uint32_t offset = 0;
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
 
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[0]);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[1]);
-		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[0]);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[1]);
+		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_images_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed (swapchain_command_buffers[i], background_index_count, 1, 0, 0, 0);
 
 		offset = aligned_size_per_transform;
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
-		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[3]);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[4]);
+		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_images_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
 
 		for (size_t a = 0; a < game_live_actor_count; ++a)
 		{
 			offset = aligned_size_per_transform * (a + 1);
 			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
-			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
-			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
-			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[3]);
+			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[4]);
+			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_images_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
 		}
 
@@ -1126,7 +1129,7 @@ AGE_RESULT graphics_submit_present (void)
 		}
 		else
 		{
-			vk_result = AGE_ERROR_GRAPHICS_ACQUIRE_NEXT_IMAGE;
+			age_result = AGE_ERROR_GRAPHICS_ACQUIRE_NEXT_IMAGE;
 			goto exit;
 		}
 	}
@@ -1239,14 +1242,14 @@ void graphics_shutdown (void)
 		vkDestroyPipeline (device, graphics_pipeline, NULL);
 	}
 
-	if (vertex_index_buffer != VK_NULL_HANDLE)
+	if (vertex_index_images_buffer != VK_NULL_HANDLE)
 	{
-		vkDestroyBuffer (device, vertex_index_buffer, NULL);
+		vkDestroyBuffer (device, vertex_index_images_buffer, NULL);
 	}
 
-	if (vertex_index_memory != VK_NULL_HANDLE)
+	if (vertex_index_buffer_memory != VK_NULL_HANDLE)
 	{
-		vkFreeMemory (device, vertex_index_memory, NULL);
+		vkFreeMemory (device, vertex_index_buffer_memory, NULL);
 	}
 
 	if (transforms_buffer != VK_NULL_HANDLE) {
