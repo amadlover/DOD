@@ -26,6 +26,12 @@
  *
  * */
 
+bool is_w_pressed = false;
+bool is_s_pressed = false;
+bool is_a_pressed = false;
+bool is_d_pressed = false;
+bool is_space_pressed = false;
+
 player_transform_inputs game_player_transform_inputs = { 0 };
 actor_transform_outputs game_player_transform_outputs = { 0 };
 
@@ -68,7 +74,8 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
     game_player_transform_inputs.forward_vector.x = 0;
 
     game_player_transform_inputs.forward_vector.y = 1;
-    game_player_transform_inputs.acceleration = 0.0001f;
+    game_player_transform_inputs.acceleration = 0.00005f;
+    game_player_transform_inputs.rotation_speed = 0.075f;
 
     GetClientRect (h_wnd, &window_rect);
 
@@ -289,10 +296,43 @@ AGE_RESULT game_player_decrease_speed (void)
     game_player_transform_inputs.u = game_player_transform_inputs.v;
 
 exit:
-    return age_result;;
+    return age_result;
 }
 
-AGE_RESULT game_shoot_bullet (void)
+AGE_RESULT game_player_turn_right (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    game_player_transform_inputs.rotation -= game_player_transform_inputs.rotation_speed;
+    game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
+
+    age_result = game_update_player_vectors ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_player_turn_left (void)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+    
+    game_player_transform_inputs.rotation += game_player_transform_inputs.rotation_speed;
+    game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
+
+    age_result = game_update_player_vectors ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_player_shoot_bullet (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
     
@@ -300,58 +340,68 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_process_char_pressed (const WPARAM w_param)
+AGE_RESULT game_process_key_down (const WPARAM w_param)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+    
+    switch (w_param) 
+    {
+        case 0x57: // w
+        is_w_pressed = true;
+        break;
+
+        case 0x53: // s
+        is_s_pressed = true;
+        break;
+
+        case 0x44: // d
+        is_d_pressed = true;
+        break;
+        
+        case 0x41: // a
+        is_a_pressed = true;
+        break;
+
+        case 0x20: // space
+        is_space_pressed = true;
+        break;
+
+        default:
+        break;
+    }
+
+exit:
+    return age_result;
+}
+
+AGE_RESULT game_process_key_up (const WPARAM w_param)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    switch (w_param)
+    switch (w_param) 
     {
-        case 0x77: // w
-            age_result = game_player_increase_speed ();
-            if (age_result != AGE_SUCCESS)
-            {
-                goto exit;
-            }
-            break;
+        case 0x57: // w
+        is_w_pressed = false;
+        break;
+
+        case 0x53: // s
+        is_s_pressed = false;
+        break;
+
+        case 0x44: // d
+        is_d_pressed = false;
+        break;
         
-        case 0x73: // s
-            age_result = game_player_decrease_speed ();
-            if (age_result != AGE_SUCCESS)
-            {
-                goto exit;
-            }
-            break;
-            
-        case 0x64: // d
-            game_player_transform_inputs.rotation -= 0.1f;
-            game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
+        case 0x41: // a
+        is_a_pressed = false;
+        break;
 
-            age_result = game_update_player_vectors ();
-            if (age_result != AGE_SUCCESS)
-            {
-                goto exit;
-            }
-
-            break;
-
-        case 0x61: // a
-            game_player_transform_inputs.rotation += 0.1f;
-            game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
-
-            age_result = game_update_player_vectors ();
-            if (age_result != AGE_SUCCESS)
-            {
-                goto exit;
-            }
-
-            break;
-        
-        case 0x20: // space bar
-            printf ("space\n");
-            break;
+        case 0x20: // space
+        is_space_pressed = false;
+        break;
 
         default:
-            break;
+        break;
     }
 
 exit:
@@ -394,6 +444,51 @@ exit:
 AGE_RESULT game_update (size_t delta_time)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
+
+    if (is_w_pressed)
+    {
+        age_result = game_player_increase_speed ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+    
+    if (is_s_pressed)
+    {
+        age_result = game_player_decrease_speed ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_d_pressed)
+    {
+        age_result = game_player_turn_right ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_a_pressed)
+    {
+        age_result = game_player_turn_left ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_space_pressed)
+    {
+        age_result = game_player_shoot_bullet ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
 
     age_result = game_update_player_actor_output_positions ();
     if (age_result != AGE_SUCCESS)

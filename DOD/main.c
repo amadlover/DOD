@@ -20,9 +20,6 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
 
     switch (msg)
     {
-    case WM_COMMAND:
-        break;
-
     case WM_QUIT:
         PostQuitMessage (0);
         break;
@@ -35,8 +32,17 @@ LRESULT CALLBACK WindowProc (HWND h_wnd, UINT msg, WPARAM w_param, LPARAM l_para
         PostQuitMessage (0);
         break;
 
-    case WM_CHAR:
-        age_result = game_process_char_pressed (w_param);
+    case WM_KEYDOWN:
+        age_result = game_process_key_down (w_param);
+        if (age_result != AGE_SUCCESS)
+        {
+            log_error (age_result);
+            PostQuitMessage (age_result);
+        }
+        break;
+
+    case WM_KEYUP:
+        age_result = game_process_key_up (w_param);
         if (age_result != AGE_SUCCESS)
         {
             log_error (age_result);
@@ -158,14 +164,10 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
         msg.message != WM_QUIT && 
         msg.message != WM_CLOSE && 
         msg.message != WM_DESTROY
-        )
+    )
     {
         if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))
         {
-            if (msg.message == WM_TIMER) 
-            {
-                msg.hwnd = h_wnd;
-            }
             TranslateMessage (&msg);
             DispatchMessage (&msg);
         }

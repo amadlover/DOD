@@ -21,6 +21,7 @@ typedef struct player_transform_inputs_
     float2 u;
     float2 forward_vector;
     float rotation;
+    float rotation_speed;
     float damping_factor;
     float firing_rate;
 } player_transform_inputs;
