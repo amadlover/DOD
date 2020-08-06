@@ -28,9 +28,13 @@
 
 bool is_w_pressed = false;
 bool is_s_pressed = false;
-bool is_a_pressed = false;
 bool is_d_pressed = false;
+bool is_a_pressed = false;
 bool is_space_pressed = false;
+bool is_up_arrow_pressed = false;
+bool is_down_arrow_pressed = false;
+bool is_right_arrow_pressed = false;
+bool is_left_arrow_pressed = false;
 
 player_transform_inputs game_player_transform_inputs = { 0 };
 actor_transform_outputs game_player_transform_outputs = { 0 };
@@ -362,6 +366,22 @@ AGE_RESULT game_process_key_down (const WPARAM w_param)
         is_a_pressed = true;
         break;
 
+        case 0x26: // up arrow
+        is_up_arrow_pressed = true;
+        break;
+
+        case 0x28: // down arrow
+        is_down_arrow_pressed = true;
+        break;
+
+        case 0x27: // right arrow
+        is_right_arrow_pressed = true;
+        break;
+
+        case 0x25: // left arrow
+        is_left_arrow_pressed = true;
+        break;
+
         case 0x20: // space
         is_space_pressed = true;
         break;
@@ -398,6 +418,22 @@ AGE_RESULT game_process_key_up (const WPARAM w_param)
 
         case 0x20: // space
         is_space_pressed = false;
+        break;
+
+        case 0x26: // up arrow
+        is_up_arrow_pressed = false;
+        break;
+
+        case 0x28: // down arrow
+        is_down_arrow_pressed = false;
+        break;
+
+        case 0x27: // right arrow
+        is_right_arrow_pressed = false;
+        break;
+
+        case 0x25: // left arrow
+        is_left_arrow_pressed = false;
         break;
 
         default:
@@ -445,7 +481,7 @@ AGE_RESULT game_update (size_t delta_time)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    if (is_w_pressed)
+    if (is_w_pressed || is_up_arrow_pressed)
     {
         age_result = game_player_increase_speed ();
         if (age_result != AGE_SUCCESS)
@@ -454,7 +490,7 @@ AGE_RESULT game_update (size_t delta_time)
         }
     }
     
-    if (is_s_pressed)
+    if (is_s_pressed || is_down_arrow_pressed)
     {
         age_result = game_player_decrease_speed ();
         if (age_result != AGE_SUCCESS)
@@ -463,7 +499,7 @@ AGE_RESULT game_update (size_t delta_time)
         }
     }
 
-    if (is_d_pressed)
+    if (is_d_pressed || is_right_arrow_pressed)
     {
         age_result = game_player_turn_right ();
         if (age_result != AGE_SUCCESS)
@@ -472,7 +508,7 @@ AGE_RESULT game_update (size_t delta_time)
         }
     }
 
-    if (is_a_pressed)
+    if (is_a_pressed || is_left_arrow_pressed)
     {
         age_result = game_player_turn_left ();
         if (age_result != AGE_SUCCESS)
