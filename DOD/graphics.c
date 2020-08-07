@@ -844,6 +844,55 @@ AGE_RESULT graphics_init (void)
 	total_vk_images_size += memory_requirements.size;
 
 	memory_requirements.size = total_vk_images_size;
+	required_memory_types = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	required_memory_type_index = 0;
+
+	for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
+	{
+		if (memory_requirements.memoryTypeBits & (1 << i) && required_memory_types & physical_device_memory_properties.memoryTypes[i].propertyFlags)
+		{
+			required_memory_type_index = i;
+			break;
+		}
+	}
+
+	memory_allocate_info.allocationSize = total_vk_images_size;
+	memory_allocate_info.memoryTypeIndex = required_memory_type_index;
+	
+	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &images_memory);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
+		goto exit;
+	}
+
+	vk_result = vkBindImageMemory (device, background_image, images_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
+		goto exit;
+	}
+
+	vk_result = vkBindImageMemory (device, player_image, images_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
+		goto exit;
+	}
+	
+	vk_result = vkBindImageMemory (device, asteroid_image, images_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
+		goto exit;
+	}
+
+	vk_result = vkBindImageMemory (device, bullet_image, images_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
+		goto exit;
+	}
 
 	VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
 	VkShaderModuleCreateInfo vertex_shader_module_create_info = {
@@ -1551,6 +1600,11 @@ void graphics_shutdown (void)
 	if (bullet_image != VK_NULL_HANDLE)
 	{
 		vkDestroyImage (device, bullet_image, NULL);
+	}
+
+	if (images_memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory (device, images_memory, NULL);
 	}
 
 	if (transforms_buffer != VK_NULL_HANDLE) {
