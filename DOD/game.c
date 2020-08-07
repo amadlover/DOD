@@ -481,7 +481,16 @@ AGE_RESULT game_process_player_input (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    if (is_w_pressed || is_up_arrow_pressed)
+    if (is_w_pressed)
+    {
+        age_result = game_player_increase_speed ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_up_arrow_pressed)
     {
         age_result = game_player_increase_speed ();
         if (age_result != AGE_SUCCESS)
@@ -490,7 +499,7 @@ AGE_RESULT game_process_player_input (void)
         }
     }
     
-    if (is_s_pressed || is_down_arrow_pressed)
+    if (is_s_pressed)
     {
         age_result = game_player_decrease_speed ();
         if (age_result != AGE_SUCCESS)
@@ -499,7 +508,16 @@ AGE_RESULT game_process_player_input (void)
         }
     }
 
-    if (is_d_pressed || is_right_arrow_pressed)
+    if (is_down_arrow_pressed)
+    {
+        age_result = game_player_decrease_speed ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_d_pressed)
     {
         age_result = game_player_turn_right ();
         if (age_result != AGE_SUCCESS)
@@ -508,7 +526,25 @@ AGE_RESULT game_process_player_input (void)
         }
     }
 
-    if (is_a_pressed || is_left_arrow_pressed)
+    if (is_right_arrow_pressed)
+    {
+        age_result = game_player_turn_right ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_a_pressed)
+    {
+        age_result = game_player_turn_left ();
+        if (age_result != AGE_SUCCESS)
+        {
+            goto exit;
+        }
+    }
+
+    if (is_left_arrow_pressed)
     {
         age_result = game_player_turn_left ();
         if (age_result != AGE_SUCCESS)

@@ -39,21 +39,42 @@ size_t total_transforms_size = 0;
 void* transforms_aligned_data = NULL;
 void* transforms_mapped_data = NULL;
 
+float screen_aspect_ratio = 1;
+
 float background_positions[12] = { -1,-1,0.9f, 1,-1,0.9f, 1,1,0.9f, -1,1,0.9f };
-float background_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
 size_t background_positions_size = sizeof (background_positions);
+float background_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
 size_t background_colors_size = sizeof (background_colors);
+float background_uvs[8] = {0,0, 0,1, 1,0, 1,1};
+size_t background_uvs_size = sizeof (background_uvs);
 size_t background_indices[6] = { 0,1,2, 0,2,3 };
 size_t background_indices_size = sizeof (background_indices);
 size_t background_index_count = 6;
 
-float actor_positions[9] = { -0.1f,0,0.5f, 0.1f,0,0.5f, 0,0.1f,0.5f };
-float actor_colors[9] = { 1,0,0, 0,1,0, 0,0,1 };
+
+float actor_positions[12] = { -0.1,-0.1,0.5f, 0.1,-0.1,0.5f, 0.1,0.1,0.5f, -0.1,0.1,0.5f };
 size_t actor_positions_size = sizeof (actor_positions);
+float actor_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
 size_t actor_colors_size = sizeof (actor_colors);
-size_t actor_indices[3] = { 0,1,2 };
+float actor_uvs[8] = { 0,0, 0,1, 1,0, 1,1 };
+size_t actor_uvs_size = sizeof (actor_uvs);
+size_t actor_indices[6] = { 0,1,2, 0,2,3 };
 size_t actor_indices_size = sizeof (actor_indices);
-size_t actor_index_count = 3;
+size_t actor_index_count = 6;
+float large_actor_scale[3] = { 1,1,1 };
+float small_actor_scale[3] = { 0.3,0.3,0.3 };
+
+
+float player_positions[12] = { -1,-1,0.5f, 1,-1,0.5f, 1,1,0.5f, -1,1,0.5f };
+size_t player_positions_size = sizeof (player_positions);
+float player_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
+size_t player_colors_size = sizeof (player_colors);
+float player_uvs[8] = { 0,0, 0,1, 1,0, 1,1 };
+size_t player_uvs_size = sizeof (player_uvs);
+size_t player_indices[6] = { 0,1,2, 0,2,3 };
+size_t player_indices_size = sizeof (player_indices);
+size_t player_index_count = 6;
+
 
 size_t player_image_size = 0;
 size_t asteroid_image_size = 0;
@@ -293,6 +314,30 @@ AGE_RESULT graphics_init (void)
 		}
 	}
 
+	int player_image_width = 0;
+	int player_image_height = 0;
+	int player_image_bpp = 0;
+	uint8_t* player_image_pixels = NULL;
+	utils_import_texture ("player.png", &player_image_width, &player_image_height, &player_image_bpp, player_image_pixels);
+
+	player_image_size = player_image_width * player_image_height * player_image_bpp * sizeof (uint8_t);
+
+	int asteroid_image_width = 0;
+	int asteroid_image_height = 0;
+	int asteroid_image_bpp = 0;
+	uint8_t* asteroid_image_pixels = NULL;
+	utils_import_texture ("asteroid.png", &asteroid_image_width, &asteroid_image_height, &asteroid_image_bpp, asteroid_image_pixels);
+
+	asteroid_image_size = asteroid_image_width * asteroid_image_height * asteroid_image_bpp * sizeof (uint8_t);
+
+	int bullet_image_width = 0;
+	int bullet_image_height = 0;
+	int bullet_image_bpp = 0;
+	uint8_t* bullet_image_pixels = NULL;
+	utils_import_texture ("bullet.png", &bullet_image_width, &bullet_image_height, &bullet_image_bpp, bullet_image_pixels);
+
+	bullet_image_size = bullet_image_width * bullet_image_height * bullet_image_bpp * sizeof (uint8_t);
+
 	VkBuffer staging_vertex_index_images_buffer = VK_NULL_HANDLE;
 	VkDeviceMemory staging_vertex_index_images_memory = VK_NULL_HANDLE;
 
@@ -305,7 +350,10 @@ AGE_RESULT graphics_init (void)
 		(VkDeviceSize)background_indices_size +
 		(VkDeviceSize)actor_positions_size +
 		(VkDeviceSize)actor_colors_size +
-		(VkDeviceSize)actor_indices_size,
+		(VkDeviceSize)actor_indices_size +
+		(VkDeviceSize)player_image_size +
+		(VkDeviceSize)asteroid_image_size +
+		(VkDeviceSize)bullet_image_size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,
 		0,
