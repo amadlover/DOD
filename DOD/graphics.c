@@ -9,6 +9,8 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
 
+#include <stb_image.h>
+
 
 VkRenderPass render_pass = VK_NULL_HANDLE;
 VkFramebuffer* swapchain_framebuffers = NULL;
@@ -20,7 +22,7 @@ VkSemaphore wait_semaphore = VK_NULL_HANDLE;
 VkSemaphore* swapchain_signal_semaphores = NULL;
 VkFence* swapchain_fences = NULL;
 
-VkBuffer vertex_index_images_buffer = VK_NULL_HANDLE;
+VkBuffer vertex_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory vertex_index_buffer_memory = VK_NULL_HANDLE;
 
 VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
@@ -52,7 +54,7 @@ size_t background_indices_size = sizeof (background_indices);
 size_t background_index_count = 6;
 
 
-float actor_positions[12] = { -0.1,-0.1,0.5f, 0.1,-0.1,0.5f, 0.1,0.1,0.5f, -0.1,0.1,0.5f };
+float actor_positions[12] = { -0.1f,-0.1f,0.5f, 0.1f,-0.1f,0.5f, 0.1f,0.1f,0.5f, -0.1f,0.1f,0.5f };
 size_t actor_positions_size = sizeof (actor_positions);
 float actor_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
 size_t actor_colors_size = sizeof (actor_colors);
@@ -61,8 +63,6 @@ size_t actor_uvs_size = sizeof (actor_uvs);
 size_t actor_indices[6] = { 0,1,2, 0,2,3 };
 size_t actor_indices_size = sizeof (actor_indices);
 size_t actor_index_count = 6;
-float large_actor_scale[3] = { 1,1,1 };
-float small_actor_scale[3] = { 0.3,0.3,0.3 };
 
 
 float player_positions[12] = { -1,-1,0.5f, 1,-1,0.5f, 1,1,0.5f, -1,1,0.5f };
@@ -76,9 +76,20 @@ size_t player_indices_size = sizeof (player_indices);
 size_t player_index_count = 6;
 
 
+VkImage background_image = VK_NULL_HANDLE;
+VkImageView background_image_view = VK_NULL_HANDLE;
+size_t background_image_size = 0;
+VkImage player_image = VK_NULL_HANDLE;
+VkImageView player_image_view = VK_NULL_HANDLE;
 size_t player_image_size = 0;
+VkImage asteroid_image = VK_NULL_HANDLE;
+VkImageView asteroid_image_view = VK_NULL_HANDLE;
 size_t asteroid_image_size = 0;
+VkImage bullet_image = VK_NULL_HANDLE;
+VkImageView bullet_image_view = VK_NULL_HANDLE;
 size_t bullet_image_size = 0;
+
+VkDeviceMemory images_memory = VK_NULL_HANDLE;
 
 AGE_RESULT graphics_create_descriptor_sets (void)
 {
@@ -314,34 +325,10 @@ AGE_RESULT graphics_init (void)
 		}
 	}
 
-	int player_image_width = 0;
-	int player_image_height = 0;
-	int player_image_bpp = 0;
-	uint8_t* player_image_pixels = NULL;
-	utils_import_texture ("player.png", &player_image_width, &player_image_height, &player_image_bpp, player_image_pixels);
+	VkBuffer staging_vertex_index_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_vertex_index_memory = VK_NULL_HANDLE;
 
-	player_image_size = player_image_width * player_image_height * player_image_bpp * sizeof (uint8_t);
-
-	int asteroid_image_width = 0;
-	int asteroid_image_height = 0;
-	int asteroid_image_bpp = 0;
-	uint8_t* asteroid_image_pixels = NULL;
-	utils_import_texture ("asteroid.png", &asteroid_image_width, &asteroid_image_height, &asteroid_image_bpp, asteroid_image_pixels);
-
-	asteroid_image_size = asteroid_image_width * asteroid_image_height * asteroid_image_bpp * sizeof (uint8_t);
-
-	int bullet_image_width = 0;
-	int bullet_image_height = 0;
-	int bullet_image_bpp = 0;
-	uint8_t* bullet_image_pixels = NULL;
-	utils_import_texture ("bullet.png", &bullet_image_width, &bullet_image_height, &bullet_image_bpp, bullet_image_pixels);
-
-	bullet_image_size = bullet_image_width * bullet_image_height * bullet_image_bpp * sizeof (uint8_t);
-
-	VkBuffer staging_vertex_index_images_buffer = VK_NULL_HANDLE;
-	VkDeviceMemory staging_vertex_index_images_memory = VK_NULL_HANDLE;
-
-	VkBufferCreateInfo vertex_index_buffer_images_create_info = {
+	VkBufferCreateInfo vertex_index_buffer_create_info = {
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		NULL,
 		0,
@@ -350,17 +337,14 @@ AGE_RESULT graphics_init (void)
 		(VkDeviceSize)background_indices_size +
 		(VkDeviceSize)actor_positions_size +
 		(VkDeviceSize)actor_colors_size +
-		(VkDeviceSize)actor_indices_size +
-		(VkDeviceSize)player_image_size +
-		(VkDeviceSize)asteroid_image_size +
-		(VkDeviceSize)bullet_image_size,
+		(VkDeviceSize)actor_indices_size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,
 		0,
 		NULL
 	};
 
-	vk_result = vkCreateBuffer (device, &vertex_index_buffer_images_create_info, NULL, &staging_vertex_index_images_buffer);
+	vk_result = vkCreateBuffer (device, &vertex_index_buffer_create_info, NULL, &staging_vertex_index_buffer);
 
 	if (vk_result != VK_SUCCESS)
 	{
@@ -369,7 +353,7 @@ AGE_RESULT graphics_init (void)
 	}
 
 	VkMemoryRequirements memory_requirements;
-	vkGetBufferMemoryRequirements (device, staging_vertex_index_images_buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements (device, staging_vertex_index_buffer, &memory_requirements);
 
 	uint32_t required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	uint32_t required_memory_type_index = 0;
@@ -390,14 +374,14 @@ AGE_RESULT graphics_init (void)
 		required_memory_type_index
 	};
 
-	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &staging_vertex_index_images_memory);
+	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &staging_vertex_index_memory);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
 		goto exit;
 	}
 
-	vk_result = vkBindBufferMemory (device, staging_vertex_index_images_buffer, staging_vertex_index_images_memory, 0);
+	vk_result = vkBindBufferMemory (device, staging_vertex_index_buffer, staging_vertex_index_memory, 0);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
@@ -408,7 +392,7 @@ AGE_RESULT graphics_init (void)
 
 	vk_result = vkMapMemory (
 		device, 
-		staging_vertex_index_images_memory,
+		staging_vertex_index_memory,
 		0,
 		(VkDeviceSize)background_positions_size,
 		0, 
@@ -421,11 +405,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_positions, background_positions_size);
-	vkUnmapMemory (device, staging_vertex_index_images_memory);
+	vkUnmapMemory (device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_images_memory,
+		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size,
 		(VkDeviceSize)background_colors_size,
 		0, 
@@ -438,11 +422,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_colors, background_colors_size);
-	vkUnmapMemory (device, staging_vertex_index_images_memory);
+	vkUnmapMemory (device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
 		device, 
-		staging_vertex_index_images_memory,
+		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
 		(VkDeviceSize)background_indices_size,
 		0, 
@@ -455,11 +439,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_indices, background_indices_size);
-	vkUnmapMemory (device, staging_vertex_index_images_memory);
+	vkUnmapMemory (device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_images_memory,
+		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size,
 		(VkDeviceSize)actor_positions_size,
 		0, 
@@ -472,11 +456,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, actor_positions, actor_positions_size);
-	vkUnmapMemory (device, staging_vertex_index_images_memory);
+	vkUnmapMemory (device, staging_vertex_index_memory);
 	
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_images_memory,
+		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size,
 		(VkDeviceSize)actor_colors_size,
 		0,
@@ -489,11 +473,11 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, actor_colors, actor_colors_size);
-	vkUnmapMemory (device, staging_vertex_index_images_memory);
+	vkUnmapMemory (device, staging_vertex_index_memory);
 
 	vk_result = vkMapMemory (
 		device,
-		staging_vertex_index_images_memory,
+		staging_vertex_index_memory,
 		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size + (VkDeviceSize)actor_colors_size,
 		(VkDeviceSize)actor_indices_size,
 		0,
@@ -506,18 +490,18 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, actor_indices, actor_indices_size);
-	vkUnmapMemory (device, staging_vertex_index_images_memory);
+	vkUnmapMemory (device, staging_vertex_index_memory);
 
-	vertex_index_buffer_images_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-	vk_result = vkCreateBuffer (device, &vertex_index_buffer_images_create_info, NULL, &vertex_index_images_buffer);
+	vk_result = vkCreateBuffer (device, &vertex_index_buffer_create_info, NULL, &vertex_index_buffer);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
 		goto exit;
 	}
 
-	vkGetBufferMemoryRequirements (device, vertex_index_images_buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements (device, vertex_index_buffer, &memory_requirements);
 
 	required_memory_types = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	required_memory_type_index = 0;
@@ -541,7 +525,7 @@ AGE_RESULT graphics_init (void)
 		goto exit;
 	}
 
-	vk_result = vkBindBufferMemory (device, vertex_index_images_buffer, vertex_index_buffer_memory, 0);
+	vk_result = vkBindBufferMemory (device, vertex_index_buffer, vertex_index_buffer_memory, 0);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
@@ -592,14 +576,18 @@ AGE_RESULT graphics_init (void)
 		goto exit;
 	}
 
-	VkBufferCopy buffer_copy = { 0, 0, (VkDeviceSize)background_positions_size + 
-										(VkDeviceSize)background_colors_size + 
-										(VkDeviceSize)background_indices_size +
-										(VkDeviceSize)actor_positions_size +
-										(VkDeviceSize)actor_colors_size +
-										(VkDeviceSize)actor_indices_size 
-								};
-	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_images_buffer, vertex_index_images_buffer, 1, &buffer_copy);
+	VkBufferCopy buffer_copy = {
+		0,
+		0,
+		(VkDeviceSize)background_positions_size +
+		(VkDeviceSize)background_colors_size +
+		(VkDeviceSize)background_indices_size +
+		(VkDeviceSize)actor_positions_size +
+		(VkDeviceSize)actor_colors_size +
+		(VkDeviceSize)actor_indices_size
+	};
+								
+	vkCmdCopyBuffer (copy_command_buffer, staging_vertex_index_buffer, vertex_index_buffer, 1, &buffer_copy);
 
 	vk_result = vkEndCommandBuffer (copy_command_buffer);
 	if (vk_result != VK_SUCCESS)
@@ -629,6 +617,234 @@ AGE_RESULT graphics_init (void)
 
 	vkQueueWaitIdle (transfer_queue);
 
+	int background_image_width = 0;
+	int background_image_height = 0;
+	int background_image_bpp = 0;
+	uint8_t* background_image_pixels = NULL;
+	utils_import_texture ("background.png", &background_image_width, &background_image_height, &background_image_bpp, &background_image_pixels);
+
+	background_image_size = background_image_width * background_image_height * background_image_bpp * sizeof (uint8_t);
+
+	int player_image_width = 0;
+	int player_image_height = 0;
+	int player_image_bpp = 0;
+	uint8_t* player_image_pixels = NULL;
+	utils_import_texture ("player.png", &player_image_width, &player_image_height, &player_image_bpp, &player_image_pixels);
+
+	player_image_size = player_image_width * player_image_height * player_image_bpp * sizeof (uint8_t);
+
+	int asteroid_image_width = 0;
+	int asteroid_image_height = 0;
+	int asteroid_image_bpp = 0;
+	uint8_t* asteroid_image_pixels = NULL;
+	utils_import_texture ("asteroid.png", &asteroid_image_width, &asteroid_image_height, &asteroid_image_bpp, &asteroid_image_pixels);
+
+	asteroid_image_size = asteroid_image_width * asteroid_image_height * asteroid_image_bpp * sizeof (uint8_t);
+
+	int bullet_image_width = 0;
+	int bullet_image_height = 0;
+	int bullet_image_bpp = 0;
+	uint8_t* bullet_image_pixels = NULL;
+	utils_import_texture ("bullet.png", &bullet_image_width, &bullet_image_height, &bullet_image_bpp, &bullet_image_pixels);
+
+	bullet_image_size = bullet_image_width * bullet_image_height * bullet_image_bpp * sizeof (uint8_t);
+
+	VkBuffer staging_image_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_image_memory = VK_NULL_HANDLE;
+
+	VkBufferCreateInfo staging_image_buffer_create_info = {
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		NULL,
+		0,
+		(VkDeviceSize) background_image_size +
+		(VkDeviceSize) player_image_size +
+		(VkDeviceSize) asteroid_image_size +
+		(VkDeviceSize) bullet_image_size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_SHARING_MODE_EXCLUSIVE,
+		0,
+		NULL
+	};
+
+	vk_result = vkCreateBuffer (device, &staging_image_buffer_create_info, NULL, &staging_image_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_BUFFER;
+		goto exit;
+	}
+
+	vkGetBufferMemoryRequirements (device, staging_image_buffer, &memory_requirements);
+	required_memory_types = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	required_memory_type_index = 0;
+
+	for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
+	{
+		if (memory_requirements.memoryTypeBits & (1 << i) && required_memory_types & physical_device_memory_properties.memoryTypes[i].propertyFlags)
+		{
+			required_memory_type_index = i;
+			break;
+		}
+	}
+
+	memory_allocate_info.allocationSize = memory_requirements.size;
+	memory_allocate_info.memoryTypeIndex = required_memory_type_index;
+
+	vk_result = vkAllocateMemory (device, &memory_allocate_info, NULL, &staging_image_memory);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_MEMORY;
+		goto exit;
+	}
+
+	vk_result = vkBindBufferMemory (device, staging_image_buffer, staging_image_memory, 0);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BIND_BUFFER_MEMORY;
+		goto exit;
+	}
+
+	vk_result = vkMapMemory (
+		device,
+		staging_image_memory,
+		0,
+		(VkDeviceSize)background_image_size,
+		0,
+		&data
+	);
+	
+	if (vk_result != VK_SUCCESS) {
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, background_image_pixels, background_image_size);
+	vkUnmapMemory (device, staging_image_memory);
+
+	vk_result = vkMapMemory (
+		device,
+		staging_image_memory,
+		(VkDeviceSize)background_image_size,
+		(VkDeviceSize)player_image_size,
+		0,
+		&data
+	);
+
+	if (vk_result != VK_SUCCESS) {
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, player_image_pixels, player_image_size);
+	vkUnmapMemory (device, staging_image_memory);
+
+	vk_result = vkMapMemory (
+		device,
+		staging_image_memory,
+		(VkDeviceSize)background_image_size +
+		(VkDeviceSize)player_image_size,
+		(VkDeviceSize)asteroid_image_size,
+		0,
+		&data
+	);
+
+	if (vk_result != VK_SUCCESS) {
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, asteroid_image_pixels, asteroid_image_size);
+	vkUnmapMemory (device, staging_image_memory);
+
+	vk_result = vkMapMemory (
+		device,
+		staging_image_memory,
+		(VkDeviceSize)background_image_size +
+		(VkDeviceSize)player_image_size +
+		(VkDeviceSize)asteroid_image_size,
+		(VkDeviceSize)bullet_image_size,
+		0,
+		&data
+	);
+
+	if (vk_result != VK_SUCCESS) {
+		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
+		goto exit;
+	}
+
+	memcpy (data, bullet_image_pixels, bullet_image_size);
+	vkUnmapMemory (device, staging_image_memory);
+
+	VkImageCreateInfo background_image_create_info = {
+		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		NULL,
+		0,
+		VK_IMAGE_TYPE_2D,
+		VK_FORMAT_R8G8B8A8_UNORM,
+		{background_image_width, background_image_height, 1},
+		1,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_SHARING_MODE_EXCLUSIVE,
+		0,
+		NULL,
+		VK_IMAGE_LAYOUT_UNDEFINED
+	};
+
+	vk_result = vkCreateImage (device, &background_image_create_info, NULL, &background_image);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE;
+		goto exit;
+	}
+
+	VkImageCreateInfo player_image_create_info = background_image_create_info;
+	player_image_create_info.extent.width = player_image_width;
+	player_image_create_info.extent.height = player_image_height;
+	
+	vk_result = vkCreateImage (device, &player_image_create_info, NULL, &player_image);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE;
+		goto exit;
+	}
+
+	VkImageCreateInfo asteroid_image_create_info = player_image_create_info;
+	asteroid_image_create_info.extent.width = asteroid_image_width;
+	asteroid_image_create_info.extent.height = asteroid_image_height;
+
+	vk_result = vkCreateImage (device, &asteroid_image_create_info, NULL, &asteroid_image);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE;
+		goto exit;
+	}
+
+	VkImageCreateInfo bullet_image_create_info = player_image_create_info;
+	bullet_image_create_info.extent.width = bullet_image_width;
+	bullet_image_create_info.extent.height = bullet_image_height;
+
+	vk_result = vkCreateImage (device, &bullet_image_create_info, NULL, &bullet_image);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE;
+		goto exit;
+	}
+
+	
+	VkDeviceSize total_vk_images_size = 0;
+	vkGetImageMemoryRequirements (device, background_image, &memory_requirements);
+	total_vk_images_size += memory_requirements.size;
+	vkGetImageMemoryRequirements (device, player_image, &memory_requirements);
+	total_vk_images_size += memory_requirements.size;
+	vkGetImageMemoryRequirements (device, asteroid_image, &memory_requirements);
+	total_vk_images_size += memory_requirements.size;
+	vkGetImageMemoryRequirements (device, bullet_image, &memory_requirements);
+	total_vk_images_size += memory_requirements.size;
+
+	memory_requirements.size = total_vk_images_size;
+
 	VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
 	VkShaderModuleCreateInfo vertex_shader_module_create_info = {
 		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -637,7 +853,9 @@ AGE_RESULT graphics_init (void)
 		sizeof (actor_vert),
 		actor_vert
 	};
+
 	vk_result = vkCreateShaderModule (device, &vertex_shader_module_create_info, NULL, &vertex_shader_module);
+	
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_SHADER_MODULE;
@@ -822,14 +1040,14 @@ AGE_RESULT graphics_init (void)
 	}
 
 exit: // clear function specific allocations before exit
-	if (staging_vertex_index_images_buffer != VK_NULL_HANDLE)
+	if (staging_vertex_index_buffer != VK_NULL_HANDLE)
 	{
-		vkDestroyBuffer (device, staging_vertex_index_images_buffer, NULL);
+		vkDestroyBuffer (device, staging_vertex_index_buffer, NULL);
 	}
 	
-	if (staging_vertex_index_images_memory != VK_NULL_HANDLE)
+	if (staging_vertex_index_memory != VK_NULL_HANDLE)
 	{
-		 vkFreeMemory (device, staging_vertex_index_images_memory, NULL);
+		 vkFreeMemory (device, staging_vertex_index_memory, NULL);
 	}
 
 	if (copy_command_buffer != VK_NULL_HANDLE)
@@ -851,6 +1069,21 @@ exit: // clear function specific allocations before exit
 	{
 		vkDestroyShaderModule (device, fragment_shader_module, NULL);
 	}
+
+	if (staging_image_buffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer (device, staging_image_buffer, NULL);
+	}
+
+	if (staging_image_memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory (device, staging_image_memory, NULL);
+	}
+
+	stbi_image_free (background_image_pixels);
+	stbi_image_free (player_image_pixels);
+	stbi_image_free (asteroid_image_pixels);
+	stbi_image_free (bullet_image_pixels);
 
 	return age_result;
 }
@@ -1122,25 +1355,25 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		uint32_t offset = 0;
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
 
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[0]);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[1]);
-		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_images_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[0]);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[1]);
+		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed (swapchain_command_buffers[i], background_index_count, 1, 0, 0, 0);
 
 		offset = aligned_size_per_transform;
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[3]);
-		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[4]);
-		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_images_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
+		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
+		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
 
 		for (size_t a = 0; a < game_live_actor_count; ++a)
 		{
 			offset = aligned_size_per_transform * (a + 1);
 			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
-			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[3]);
-			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_images_buffer, &vertex_index_buffer_offsets[4]);
-			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_images_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
+			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
+			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed (swapchain_command_buffers[i], actor_index_count, 1, 0, 0, 0);
 		}
 
@@ -1290,14 +1523,34 @@ void graphics_shutdown (void)
 		vkDestroyPipeline (device, graphics_pipeline, NULL);
 	}
 
-	if (vertex_index_images_buffer != VK_NULL_HANDLE)
+	if (vertex_index_buffer != VK_NULL_HANDLE)
 	{
-		vkDestroyBuffer (device, vertex_index_images_buffer, NULL);
+		vkDestroyBuffer (device, vertex_index_buffer, NULL);
 	}
 
 	if (vertex_index_buffer_memory != VK_NULL_HANDLE)
 	{
 		vkFreeMemory (device, vertex_index_buffer_memory, NULL);
+	}
+
+	if (background_image != VK_NULL_HANDLE)
+	{
+		vkDestroyImage (device, background_image, NULL);
+	}
+
+	if (player_image != VK_NULL_HANDLE)
+	{
+		vkDestroyImage (device, player_image, NULL);
+	}
+
+	if (asteroid_image != VK_NULL_HANDLE)
+	{
+		vkDestroyImage (device, asteroid_image, NULL);
+	}
+
+	if (bullet_image != VK_NULL_HANDLE)
+	{
+		vkDestroyImage (device, bullet_image, NULL);
 	}
 
 	if (transforms_buffer != VK_NULL_HANDLE) {

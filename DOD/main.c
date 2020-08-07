@@ -103,7 +103,7 @@ int WINAPI wWinMain (_In_ HINSTANCE h_instance, _In_opt_ HINSTANCE previous_inst
 {
     AllocConsole ();
     freopen ("CONOUT$", "w", stdout);
-    printf ("%s %s %d Hello Console\n", __FILE__, __FUNCTION__, __LINE__);
+    printf ("Hello Console\n");
 
     HANDLE con_hnd = GetStdHandle (STD_OUTPUT_HANDLE);
     CONSOLE_FONT_INFOEX font = { sizeof (font) };

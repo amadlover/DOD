@@ -98,11 +98,11 @@ void utils_get_files_in_folder (const char* partial_folder_path, file_path** out
 	} while (FindNextFile (find_handle, &ffd) != 0);
 }
 
-void utils_import_texture (const char* texture_path, int* width, int* height, int* bpp, uint8_t* pixels)
+void utils_import_texture (const char* texture_path, int* width, int* height, int* bpp, uint8_t** pixels)
 {
 	char full_path[MAX_PATH];
 	utils_get_full_file_path (texture_path, full_path);
-	pixels = stbi_load (full_path, width, height, bpp, 4);
+	*pixels = stbi_load (full_path, width, height, bpp, 4);
 }
 
 void* utils_malloc (const size_t size)

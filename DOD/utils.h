@@ -14,7 +14,7 @@ typedef struct _file_path
 void utils_get_full_file_path (const char* partial_file_path, char* out_file_path);
 void utils_get_files_in_folder (const char* partial_folder_path, file_path** out_file_paths, size_t* num_out_files);
 
-void utils_import_texture (const char* file_path, int* width, int* height, int* bpp, uint8_t* pixels);
+void utils_import_texture (const char* file_path, int* width, int* height, int* bpp, uint8_t** pixels);
 
 void* utils_malloc (const size_t size);
 void* utils_malloc_zero (const size_t size);
