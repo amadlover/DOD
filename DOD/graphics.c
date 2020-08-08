@@ -711,7 +711,6 @@ AGE_RESULT graphics_init (void)
 		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE;
 		goto exit;
 	}
-
 	
 	VkDeviceSize total_vk_images_size = 0;
 	vkGetImageMemoryRequirements (device, background_image, &memory_requirements);

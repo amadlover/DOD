@@ -17,6 +17,7 @@ typedef struct float3_
 typedef struct player_transform_inputs_
 {
     float acceleration;
+    float deceleration;
     float2 v;
     float2 u;
     float2 forward_vector;
