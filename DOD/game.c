@@ -629,7 +629,7 @@ AGE_RESULT game_update (size_t delta_time)
         goto exit;
     }
 
-    age_result = graphics_update_transforms_buffer (&game_player_transform_outputs, game_actors_transform_outputs, game_live_actor_count);
+    age_result = graphics_update_transforms_buffer_data (&game_player_transform_outputs, game_actors_transform_outputs, game_live_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;

@@ -28,9 +28,11 @@ VkDeviceMemory vertex_index_buffer_memory = VK_NULL_HANDLE;
 VkPipelineLayout graphics_pipeline_layout = VK_NULL_HANDLE;
 VkPipeline graphics_pipeline = VK_NULL_HANDLE;
 VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
-VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-size_t descriptor_set_count = 0;
+VkDescriptorSetLayout transform_descriptor_set_layout = VK_NULL_HANDLE;
+VkDescriptorSet transform_descriptor_set = VK_NULL_HANDLE;
+VkDescriptorSetLayout texture_descriptor_set_layout = VK_NULL_HANDLE;
+VkDescriptorSet texture_descriptor_set = VK_NULL_HANDLE;
+VkSampler common_sampler = VK_NULL_HANDLE;
 
 VkBuffer transforms_buffer = VK_NULL_HANDLE;
 VkDeviceMemory transforms_buffer_memory = VK_NULL_HANDLE;
@@ -96,6 +98,11 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 
+	VkSamplerCreateInfo sampler_create_info = {
+		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		
+	};
+
 	VkDescriptorPoolSize descriptor_pool_size = {
 		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 		1
@@ -127,7 +134,7 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		&descriptor_layout_binding
 	};
 
-	vk_result = vkCreateDescriptorSetLayout (device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
+	vk_result = vkCreateDescriptorSetLayout (device, &descriptor_set_layout_create_info, NULL, &transform_descriptor_set_layout);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
@@ -139,10 +146,10 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		NULL,
 		descriptor_pool,
 		1,
-		&descriptor_set_layout
+		&transform_descriptor_set_layout
 	};
 
-	vk_result = vkAllocateDescriptorSets (device, &descriptor_set_allocate_info, &descriptor_set);
+	vk_result = vkAllocateDescriptorSets (device, &descriptor_set_allocate_info, &transform_descriptor_set);
 	if (vk_result)
 	{
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
@@ -154,7 +161,7 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		NULL,
 		0,
 		1,
-		&descriptor_set_layout,
+		&transform_descriptor_set_layout,
 		0,
 		NULL
 	};
@@ -1299,71 +1306,151 @@ exit: // clear function specific allocations before exit
 	return age_result;
 }
 
-AGE_RESULT graphics_create_descriptor_set (void)
+AGE_RESULT graphics_create_descriptor_sets (void)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
-
 	
-	VkDescriptorPoolSize descriptor_pool_size = {
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1
+	VkDescriptorPoolSize descriptor_pool_sizes[] = {
+		{
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+			1
+		},
+		{
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1
+		}
 	};
 
 	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 		NULL,
 		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		1,
-		1,
-		&descriptor_pool_size
+		2,
+		2,
+		descriptor_pool_sizes
 	};
 	vk_result = vkCreateDescriptorPool (device, &descriptor_pool_create_info, NULL, &descriptor_pool);
 
-	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
-		0,
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1,
-		VK_SHADER_STAGE_VERTEX_BIT,
-		NULL
+	VkDescriptorSetLayoutBinding descriptor_layout_bindings[] = {
+		{
+			0,
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+			1,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			NULL
+		},
+		{
+			0,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			4,
+			VK_SHADER_STAGE_FRAGMENT_BIT,
+			NULL
+		}
 	};
 
-	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
+	VkDescriptorSetLayoutCreateInfo transform_descriptor_set_layout_create_info = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 		NULL,
 		0,
 		1,
-		&descriptor_layout_binding
+		descriptor_layout_bindings
 	};
 
-	vk_result = vkCreateDescriptorSetLayout (device, &descriptor_set_layout_create_info, NULL, &descriptor_set_layout);
+	vk_result = vkCreateDescriptorSetLayout (device, &transform_descriptor_set_layout_create_info, NULL, &transform_descriptor_set_layout);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
 		goto exit;
 	}
 
-	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
+	VkDescriptorSetLayoutCreateInfo texture_descriptor_set_layout_create_info = transform_descriptor_set_layout_create_info;
+	texture_descriptor_set_layout_create_info.pBindings = descriptor_layout_bindings + 1;
+
+	vk_result = vkCreateDescriptorSetLayout (device, &texture_descriptor_set_layout_create_info, NULL, &texture_descriptor_set_layout);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
+		goto exit;
+	}
+
+	VkDescriptorSetAllocateInfo transform_descriptor_set_allocate_info = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 		NULL,
 		descriptor_pool,
 		1,
-		&descriptor_set_layout
+		transform_descriptor_set_layout
 	};
 
-	vk_result = vkAllocateDescriptorSets (device, &descriptor_set_allocate_info, &descriptor_set);
+	vk_result = vkAllocateDescriptorSets (device, &transform_descriptor_set_allocate_info, &transform_descriptor_set);
 	if (vk_result)
 	{
 		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
 		goto exit;
 	}
 
+	VkDescriptorSetAllocateInfo texture_descriptor_set_allocate_info = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		NULL,
+		descriptor_pool,
+		1,
+		texture_descriptor_set_layout
+	};
+
+	vk_result = vkAllocateDescriptorSets (device, &texture_descriptor_set_allocate_info, &texture_descriptor_set);
+	if (vk_result)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
+		goto exit;
+	}
+
+	VkDescriptorSetLayout descriptor_set_layouts[2] = {
+		transform_descriptor_set_layout,
+		texture_descriptor_set_layout
+	};
+
+	VkDescriptorImageInfo image_infos[4] = {
+		{
+			common_sampler,
+			background_image_view,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		},
+		{
+			common_sampler,
+			player_image_view,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		},
+		{
+			common_sampler,
+			asteroid_image_view,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		},
+		{
+			common_sampler,
+			bullet_image_view,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		}
+	};
+
+	VkWriteDescriptorSet texture_descriptor_set_write = {
+		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		NULL,
+		texture_descriptor_set,
+		0,
+		0,
+		1,
+		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		image_infos,
+		NULL,
+		NULL
+	};
+
 	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		NULL,
 		0,
-		1,
-		&descriptor_set_layout,
+		2,
+		descriptor_set_layouts,
 		0,
 		NULL
 	};
@@ -1477,7 +1564,7 @@ AGE_RESULT graphics_create_transforms_buffer (const size_t game_current_max_acto
 	VkWriteDescriptorSet descriptor_write = {
 		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		NULL,
-		descriptor_set,
+		transform_descriptor_set,
 		0,
 		0,
 		1,
@@ -1494,7 +1581,7 @@ exit: // clean up allocations made by the function
 	return age_result;
 }
 
-AGE_RESULT graphics_update_transforms_buffer (const actor_transform_outputs* game_player_transform_outputs, const actor_transform_outputs* game_actors_transform_outputs, const size_t game_live_actor_count)
+AGE_RESULT graphics_update_transforms_buffer_data (const actor_transform_outputs* game_player_transform_outputs, const actor_transform_outputs* game_actors_transform_outputs, const size_t game_live_actor_count)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
 
@@ -1564,7 +1651,7 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		
 		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 		uint32_t offset = 0;
-		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &transform_descriptor_set, 1, &offset);
 
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[0]);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[1]);
@@ -1572,7 +1659,7 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		vkCmdDrawIndexed (swapchain_command_buffers[i], background_index_count, 1, 0, 0, 0);
 
 		offset = aligned_size_per_transform;
-		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &transform_descriptor_set, 1, &offset);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
 		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
@@ -1581,7 +1668,7 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		for (size_t a = 0; a < game_live_actor_count; ++a)
 		{
 			offset = aligned_size_per_transform * (a + 2);
-			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &descriptor_set, 1, &offset);
+			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &transform_descriptor_set, 1, &offset);
 			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
 			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
 			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
@@ -1699,14 +1786,24 @@ void graphics_shutdown (void)
 
 	utils_free (transforms_aligned_data);
 
-	if (descriptor_set != VK_NULL_HANDLE)
+	if (transform_descriptor_set != VK_NULL_HANDLE)
 	{
-		vkFreeDescriptorSets (device, descriptor_pool, 1, &descriptor_set);
+		vkFreeDescriptorSets (device, descriptor_pool, 1, &transform_descriptor_set);
+	}
+
+	if (texture_descriptor_set != VK_NULL_HANDLE)
+	{
+		vkFreeDescriptorSets (device, descriptor_pool, 1, &texture_descriptor_set);
 	}
 	
-	if (descriptor_set_layout != VK_NULL_HANDLE)
+	if (transform_descriptor_set_layout != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorSetLayout (device, descriptor_set_layout, NULL);
+		vkDestroyDescriptorSetLayout (device, transform_descriptor_set_layout, NULL);
+	}
+	
+	if (texture_descriptor_set_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout (device, texture_descriptor_set_layout, NULL);
 	}
 
 	if (descriptor_pool != VK_NULL_HANDLE)
