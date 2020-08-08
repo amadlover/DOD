@@ -394,10 +394,16 @@ AGE_RESULT graphics_init (void)
 		device, 
 		staging_vertex_index_memory,
 		0,
-		(VkDeviceSize)background_positions_size,
+		(VkDeviceSize)background_positions_size +
+		(VkDeviceSize)background_colors_size +
+		(VkDeviceSize)background_indices_size +
+		(VkDeviceSize)actor_positions_size +
+		(VkDeviceSize)actor_colors_size +
+		(VkDeviceSize)actor_indices_size,
 		0, 
 		&data
 	);
+
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
@@ -405,91 +411,12 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_positions, background_positions_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
+	memcpy ((char*)data + background_positions_size, background_colors, background_colors_size);
+	memcpy ((char*)data + background_positions_size + background_colors_size, background_indices, background_indices_size);
+	memcpy ((char*)data + background_positions_size + background_colors_size + background_indices_size, actor_positions, actor_positions_size);
+	memcpy ((char*)data + background_positions_size + background_colors_size + background_indices_size + actor_positions_size, actor_colors, actor_colors_size);
+	memcpy ((char*)data + background_positions_size + background_colors_size + background_indices_size + actor_positions_size + actor_colors_size, actor_indices, actor_indices_size);
 
-	vk_result = vkMapMemory (
-		device,
-		staging_vertex_index_memory,
-		(VkDeviceSize)background_positions_size,
-		(VkDeviceSize)background_colors_size,
-		0, 
-		&data
-	);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, background_colors, background_colors_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
-
-	vk_result = vkMapMemory (
-		device, 
-		staging_vertex_index_memory,
-		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
-		(VkDeviceSize)background_indices_size,
-		0, 
-		&data
-	);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, background_indices, background_indices_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
-
-	vk_result = vkMapMemory (
-		device,
-		staging_vertex_index_memory,
-		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size,
-		(VkDeviceSize)actor_positions_size,
-		0, 
-		&data
-	);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, actor_positions, actor_positions_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
-	
-	vk_result = vkMapMemory (
-		device,
-		staging_vertex_index_memory,
-		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size,
-		(VkDeviceSize)actor_colors_size,
-		0,
-		&data
-	);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, actor_colors, actor_colors_size);
-	vkUnmapMemory (device, staging_vertex_index_memory);
-
-	vk_result = vkMapMemory (
-		device,
-		staging_vertex_index_memory,
-		(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize)background_indices_size + (VkDeviceSize)actor_positions_size + (VkDeviceSize)actor_colors_size,
-		(VkDeviceSize)actor_indices_size,
-		0,
-		&data
-	);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, actor_indices, actor_indices_size);
 	vkUnmapMemory (device, staging_vertex_index_memory);
 
 	vertex_index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -562,14 +489,14 @@ AGE_RESULT graphics_init (void)
 		goto exit;
 	}
 
-	VkCommandBufferBeginInfo copy_command_buffer_begin_info = {
+	VkCommandBufferBeginInfo copy_cmd_buffer_begin_info = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		NULL,
 		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
 		NULL
 	};
 
-	vk_result = vkBeginCommandBuffer (copy_command_buffer, &copy_command_buffer_begin_info);
+	vk_result = vkBeginCommandBuffer (copy_command_buffer, &copy_cmd_buffer_begin_info);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
@@ -707,7 +634,10 @@ AGE_RESULT graphics_init (void)
 		device,
 		staging_image_memory,
 		0,
-		(VkDeviceSize)background_image_size,
+		(VkDeviceSize)background_image_size +
+		(VkDeviceSize)player_image_size +
+		(VkDeviceSize)asteroid_image_size +
+		(VkDeviceSize)bullet_image_size,
 		0,
 		&data
 	);
@@ -718,60 +648,10 @@ AGE_RESULT graphics_init (void)
 	}
 
 	memcpy (data, background_image_pixels, background_image_size);
-	vkUnmapMemory (device, staging_image_memory);
+	memcpy ((char*)data + background_image_size, player_image_pixels, player_image_size);
+	memcpy ((char*)data + background_image_size + player_image_size, asteroid_image_pixels, asteroid_image_size);
+	memcpy ((char*)data + background_image_size + player_image_size + asteroid_image_size, bullet_image_pixels, bullet_image_size);
 
-	vk_result = vkMapMemory (
-		device,
-		staging_image_memory,
-		(VkDeviceSize)background_image_size,
-		(VkDeviceSize)player_image_size,
-		0,
-		&data
-	);
-
-	if (vk_result != VK_SUCCESS) {
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, player_image_pixels, player_image_size);
-	vkUnmapMemory (device, staging_image_memory);
-
-	vk_result = vkMapMemory (
-		device,
-		staging_image_memory,
-		(VkDeviceSize)background_image_size +
-		(VkDeviceSize)player_image_size,
-		(VkDeviceSize)asteroid_image_size,
-		0,
-		&data
-	);
-
-	if (vk_result != VK_SUCCESS) {
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, asteroid_image_pixels, asteroid_image_size);
-	vkUnmapMemory (device, staging_image_memory);
-
-	vk_result = vkMapMemory (
-		device,
-		staging_image_memory,
-		(VkDeviceSize)background_image_size +
-		(VkDeviceSize)player_image_size +
-		(VkDeviceSize)asteroid_image_size,
-		(VkDeviceSize)bullet_image_size,
-		0,
-		&data
-	);
-
-	if (vk_result != VK_SUCCESS) {
-		age_result = AGE_ERROR_GRAPHICS_MAP_MEMORY;
-		goto exit;
-	}
-
-	memcpy (data, bullet_image_pixels, bullet_image_size);
 	vkUnmapMemory (device, staging_image_memory);
 
 	VkImageCreateInfo background_image_create_info = {
@@ -873,26 +753,78 @@ AGE_RESULT graphics_init (void)
 		goto exit;
 	}
 
-	vk_result = vkBindImageMemory (device, player_image, images_memory, 0);
+	vk_result = vkBindImageMemory (device, player_image, images_memory, (VkDeviceSize)background_image_size);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
 		goto exit;
 	}
 	
-	vk_result = vkBindImageMemory (device, asteroid_image, images_memory, 0);
+	vk_result = vkBindImageMemory (device, asteroid_image, images_memory, (VkDeviceSize)background_image_size + (VkDeviceSize)player_image_size);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
 		goto exit;
 	}
 
-	vk_result = vkBindImageMemory (device, bullet_image, images_memory, 0);
+	vk_result = vkBindImageMemory (device, bullet_image, images_memory, (VkDeviceSize)background_image_size + (VkDeviceSize)player_image_size + (VkDeviceSize)asteroid_image_size);
 	if (vk_result != VK_SUCCESS)
 	{
 		age_result = AGE_ERROR_GRAPHICS_BIND_IMAGE_MEMORY;
 		goto exit;
 	}
+
+	/*VkCommandBuffer change_image_layout_cmd_buffer = VK_NULL_HANDLE;
+	vk_result = vkAllocateCommandBuffers (device, &command_buffer_allocate_info, &change_image_layout_cmd_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_COMMAND_BUFFER;
+		goto exit;
+	}
+
+	VkCommandBufferBeginInfo change_image_layout_cmd_buffer_begin_info = copy_cmd_buffer_begin_info;
+
+	vk_result = vkBeginCommandBuffer (change_image_layout_cmd_buffer, &change_image_layout_cmd_buffer_begin_info);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_BEGIN_COMMAND_BUFFER;
+		goto exit;
+	}
+
+	VkImageSubresourceLayers subresource_layers = {
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		1,
+		0,
+		1
+	};
+
+	VkOffset3D img_offset = {0,0,0};
+	VkExtent3D img_extent = {background_image_width, background_image_height, 1};
+
+	VkBufferImageCopy background_img_copy = {
+		0,
+		0,
+		0,
+		subresource_layers,
+		img_offset,
+		img_extent
+	};
+
+	vkCmdCopyBufferToImage (
+		change_image_layout_cmd_buffer,
+		staging_image_buffer,
+		background_image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&background_img_copy
+	);
+
+	vk_result = vkEndCommandBuffer (change_image_layout_cmd_buffer);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_END_COMMAND_BUFFER;
+		goto exit;
+	}*/
 
 	VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
 	VkShaderModuleCreateInfo vertex_shader_module_create_info = {

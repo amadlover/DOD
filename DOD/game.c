@@ -151,7 +151,7 @@ AGE_RESULT game_add_actor (void)
 
     game_actors_transform_inputs[game_live_actor_count].forward_vector.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_actors_transform_inputs[game_live_actor_count].forward_vector.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_actors_transform_inputs[game_live_actor_count].forward_speed = ((float)rand () / (float)RAND_MAX) / 1000.f;
+    game_actors_transform_inputs[game_live_actor_count].forward_speed = ((float)rand () / (float)RAND_MAX) / 500.f;
     game_actors_transform_inputs[game_live_actor_count].rotation_speed = (((float)rand () / (float)RAND_MAX)) / 50.f;
 
     ++game_live_actor_count;
@@ -451,10 +451,50 @@ AGE_RESULT game_update_player_actor_output_positions (void)
     game_player_transform_outputs.position.x += game_player_transform_inputs.v.x;
     game_player_transform_outputs.position.y += game_player_transform_inputs.v.y;
 
+    if (game_player_transform_outputs.position.x > 1.f)
+    {
+        game_player_transform_outputs.position.x = -1.f;
+    }
+    
+    if (game_player_transform_outputs.position.x < -1.f)
+    {
+        game_player_transform_outputs.position.x = 1.f;
+    }
+
+    if (game_player_transform_outputs.position.y > 1.f)
+    {
+        game_player_transform_outputs.position.y = -1.f;
+    }
+    
+    if (game_player_transform_outputs.position.y < -1.f)
+    {
+        game_player_transform_outputs.position.y = 1.f;
+    }
+
     for (size_t a = 0; a < game_live_actor_count; ++a)
     {
         game_actors_transform_outputs[a].position.x += (game_actors_transform_inputs[a].forward_vector.x * game_actors_transform_inputs[a].forward_speed);
         game_actors_transform_outputs[a].position.y += (game_actors_transform_inputs[a].forward_vector.y * game_actors_transform_inputs[a].forward_speed);
+
+        if (game_actors_transform_outputs[a].position.x > 1.f)
+        {
+            game_actors_transform_outputs[a].position.x = -1.f;
+        }
+
+        if (game_actors_transform_outputs[a].position.x < -1.f)
+        {
+            game_actors_transform_outputs[a].position.x = 1.f;
+        }
+
+        if (game_actors_transform_outputs[a].position.y > 1.f)
+        {
+            game_actors_transform_outputs[a].position.y = -1.f;
+        }
+
+        if (game_actors_transform_outputs[a].position.y < -1.f)
+        {
+            game_actors_transform_outputs[a].position.y = 1.f;
+        }
 
         game_actors_transform_outputs[a].rotation += (game_actors_transform_inputs[a].rotation_speed);
     }
