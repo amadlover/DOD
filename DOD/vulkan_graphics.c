@@ -1,4 +1,4 @@
-#include "graphics.h"
+#include "vulkan_graphics.h"
 #include "utils.h"
 #include "error.h"
 #include "actor_vert.h"
@@ -92,91 +92,6 @@ VkImageView bullet_image_view = VK_NULL_HANDLE;
 size_t bullet_image_size = 0;
 
 VkDeviceMemory images_memory = VK_NULL_HANDLE;
-
-AGE_RESULT graphics_create_descriptor_sets (void)
-{
-	AGE_RESULT age_result = AGE_SUCCESS;
-	VkResult vk_result = VK_SUCCESS;
-
-	VkSamplerCreateInfo sampler_create_info = {
-		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-		
-	};
-
-	VkDescriptorPoolSize descriptor_pool_size = {
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1
-	};
-
-	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		NULL,
-		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		1,
-		1,
-		&descriptor_pool_size
-	};
-	vk_result = vkCreateDescriptorPool (device, &descriptor_pool_create_info, NULL, &descriptor_pool);
-
-	VkDescriptorSetLayoutBinding descriptor_layout_binding = {
-		0,
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		1,
-		VK_SHADER_STAGE_VERTEX_BIT,
-		NULL
-	};
-
-	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		NULL,
-		0,
-		1,
-		&descriptor_layout_binding
-	};
-
-	vk_result = vkCreateDescriptorSetLayout (device, &descriptor_set_layout_create_info, NULL, &transform_descriptor_set_layout);
-	if (vk_result != VK_SUCCESS)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_SET_LAYOUT;
-		goto exit;
-	}
-
-	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-		NULL,
-		descriptor_pool,
-		1,
-		&transform_descriptor_set_layout
-	};
-
-	vk_result = vkAllocateDescriptorSets (device, &descriptor_set_allocate_info, &transform_descriptor_set);
-	if (vk_result)
-	{
-		age_result = AGE_ERROR_GRAPHICS_ALLOCATE_DESCRIPTOR_SETS;
-		goto exit;
-	}
-
-	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		NULL,
-		0,
-		1,
-		&transform_descriptor_set_layout,
-		0,
-		NULL
-	};
-
-	vk_result = vkCreatePipelineLayout (device, &pipeline_layout_create_info, NULL, &graphics_pipeline_layout);
-	if (vk_result)
-	{
-		age_result = AGE_ERROR_GRAPHICS_CREATE_PIPELINE_LAYOUT;
-		goto exit;
-	}
-
-exit: // clean up allocation made within the function
-
-	return age_result;
-}
 
 AGE_RESULT graphics_init (void)
 {
@@ -1331,6 +1246,11 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		descriptor_pool_sizes
 	};
 	vk_result = vkCreateDescriptorPool (device, &descriptor_pool_create_info, NULL, &descriptor_pool);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_DESCRIPTOR_POOL;
+		goto exit;
+	}
 
 	VkDescriptorSetLayoutBinding descriptor_layout_bindings[] = {
 		{
@@ -1379,7 +1299,7 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		NULL,
 		descriptor_pool,
 		1,
-		transform_descriptor_set_layout
+		&transform_descriptor_set_layout
 	};
 
 	vk_result = vkAllocateDescriptorSets (device, &transform_descriptor_set_allocate_info, &transform_descriptor_set);
@@ -1394,7 +1314,7 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		NULL,
 		descriptor_pool,
 		1,
-		texture_descriptor_set_layout
+		&texture_descriptor_set_layout
 	};
 
 	vk_result = vkAllocateDescriptorSets (device, &texture_descriptor_set_allocate_info, &texture_descriptor_set);
