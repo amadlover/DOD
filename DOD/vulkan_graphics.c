@@ -1233,7 +1233,7 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		},
 		{
 			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			1
+			4
 		}
 	};
 
