@@ -902,6 +902,54 @@ AGE_RESULT graphics_init (void)
 	}
 	vkQueueWaitIdle (transfer_queue);
 
+	VkImageViewCreateInfo background_image_view_create_info = {
+		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		NULL,
+		0,
+		background_image,
+		VK_IMAGE_VIEW_TYPE_2D,
+		VK_FORMAT_R8G8B8A8_UNORM,
+		{VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY},
+		subresource_range
+	};
+
+	vk_result = vkCreateImageView (device, &background_image_view_create_info, NULL, &background_image_view);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
+		goto exit;
+	}
+	
+	VkImageViewCreateInfo player_image_view_create_info = background_image_view_create_info;
+	player_image_view_create_info.image = player_image;
+
+	vk_result = vkCreateImageView (device, &player_image_view_create_info, NULL, &player_image_view);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
+		goto exit;
+	}
+	
+	VkImageViewCreateInfo asteroid_image_view_create_info = player_image_view_create_info;
+	asteroid_image_view_create_info.image = asteroid_image;
+
+	vk_result = vkCreateImageView (device, &asteroid_image_view_create_info, NULL, &asteroid_image_view);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
+		goto exit;
+	}
+
+	VkImageViewCreateInfo bullet_image_view_create_info = asteroid_image_view_create_info;
+	bullet_image_view_create_info.image = bullet_image;
+
+	vk_result = vkCreateImageView (device, &bullet_image_view_create_info, NULL, &bullet_image_view);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_IMAGE_VIEW;
+		goto exit;
+	}
+
 	background_image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	background_image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	background_image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -1365,6 +1413,14 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 		NULL
 	};
 
+	vkUpdateDescriptorSets (device, 1, &texture_descriptor_set_write, 0, NULL);
+
+	VkPushConstantRange texture_index_push_constant_range = {
+		VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof (uint32_t)
+	};
+
 	VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		NULL,
@@ -1379,6 +1435,43 @@ AGE_RESULT graphics_create_descriptor_sets (void)
 	if (vk_result)
 	{
 		age_result = AGE_ERROR_GRAPHICS_CREATE_PIPELINE_LAYOUT;
+		goto exit;
+	}
+
+exit:
+	return age_result;
+}
+
+AGE_RESULT graphics_create_sampler (void)
+{
+	AGE_RESULT age_result = AGE_SUCCESS;
+	VkResult vk_result = VK_SUCCESS;
+
+	VkSamplerCreateInfo sampler_create_info = {
+		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		NULL,
+		0,
+		VK_FILTER_LINEAR,
+		VK_FILTER_LINEAR,
+		VK_SAMPLER_MIPMAP_MODE_LINEAR,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		0,
+		VK_FALSE,
+		0,
+		VK_FALSE,
+		VK_COMPARE_OP_NEVER,
+		0,
+		0,
+		VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+		VK_FALSE
+	};
+
+	vk_result = vkCreateSampler (device, &sampler_create_info, NULL, &common_sampler);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SAMPLER;
 		goto exit;
 	}
 
@@ -1570,9 +1663,12 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		
 		vkCmdBindPipeline (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+
 		uint32_t offset = 0;
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &transform_descriptor_set, 1, &offset);
-
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 1, 1, &texture_descriptor_set, 0, NULL);
+		uint32_t texture_index = 0;
+		vkCmdPushConstants (swapchain_command_buffers[i], graphics_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof (uint32_t), &texture_index);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[0]);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[1]);
 		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[2], VK_INDEX_TYPE_UINT32);
@@ -1580,6 +1676,9 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 
 		offset = aligned_size_per_transform;
 		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &transform_descriptor_set, 1, &offset);
+		vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 1, 1, &texture_descriptor_set, 0, NULL);
+		texture_index = 1;
+		vkCmdPushConstants (swapchain_command_buffers[i], graphics_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof (uint32_t), &texture_index);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
 		vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
 		vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
@@ -1589,6 +1688,9 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		{
 			offset = aligned_size_per_transform * (a + 2);
 			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 0, 1, &transform_descriptor_set, 1, &offset);
+			vkCmdBindDescriptorSets (swapchain_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout, 1, 1, &texture_descriptor_set, 0, NULL);
+			texture_index = 2;
+			vkCmdPushConstants (swapchain_command_buffers[i], graphics_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof (uint32_t), &texture_index);
 			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 0, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[3]);
 			vkCmdBindVertexBuffers (swapchain_command_buffers[i], 1, 1, &vertex_index_buffer, &vertex_index_buffer_offsets[4]);
 			vkCmdBindIndexBuffer (swapchain_command_buffers[i], vertex_index_buffer, vertex_index_buffer_offsets[5], VK_INDEX_TYPE_UINT32);
