@@ -56,7 +56,7 @@ size_t background_index_count = 6;
 
 float actor_positions[12] = { -0.1f,-0.1f,0.5f, 0.1f,-0.1f,0.5f, 0.1f,0.1f,0.5f, -0.1f,0.1f,0.5f };
 size_t actor_positions_size = sizeof (actor_positions);
-float actor_uvs[8] = { 0,0, 1,0, 1,1, 0,1 };
+float actor_uvs[8] = { 1,1, 0,1, 0,0, 1,0 };
 size_t actor_uvs_size = sizeof (actor_uvs);
 size_t actor_indices[6] = { 0,1,2, 0,2,3 };
 size_t actor_indices_size = sizeof (actor_indices);
