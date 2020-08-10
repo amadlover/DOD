@@ -98,25 +98,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         goto exit;
     }
 
-    age_result = graphics_create_descriptor_sets ();
-    if (age_result != AGE_SUCCESS)
-    {
-        goto exit;
-    }
-
-    age_result = graphics_create_transforms_buffer (game_current_max_actor_count);
-    if (age_result != AGE_SUCCESS)
-    {
-        goto exit;
-    }
-
-    age_result = graphics_init ();
-    if (age_result != AGE_SUCCESS)
-    {
-        goto exit;
-    }
-
-    age_result = graphics_update_command_buffers (game_live_actor_count);
+    age_result = graphics_init (game_current_max_actor_count, game_live_actor_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;

@@ -14,5 +14,5 @@ layout (location = 0) out vec4 out_color;
 
 void main ()
 {
-    out_color = texture (color_texture[constants.index], in_color.xy);
+    out_color = texture (color_texture[constants.index], in_color.xz);
 }    

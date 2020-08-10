@@ -24,6 +24,8 @@ VkImageView* swapchain_image_views;
 size_t swapchain_image_count;
 VkExtent2D current_extent;
 VkSurfaceFormatKHR chosen_surface_format;
+VkCommandPool transfer_command_pool;
+VkSampler common_sampler;
 
 AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd);
 void vulkan_interface_shutdown (void);

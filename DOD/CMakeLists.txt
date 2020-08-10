@@ -8,8 +8,8 @@ include_directories (${CMAKE_SOURCE_DIR}/External/stb)
 link_directories ($ENV{VULKAN_SDK}/Lib32)
 link_directories (${CMAKE_SOURCE_DIR}/External/SDL/lib32)
 
-set (H graphics.h game.h utils.h log.h error.h types.h actor_vert.h actor_frag.h compute.h vulkan_interface.h)
-set (C graphics.c game.c utils.c main.c log.c types.c compute.c vulkan_interface.c)
+set (H vulkan_graphics.h game.h utils.h log.h error.h types.h actor_vert.h actor_frag.h vulkan_compute.h vulkan_interface.h)
+set (C vulkan_graphics.c game.c utils.c main.c log.c types.c vulkan_compute.c vulkan_interface.c)
 
 add_executable (DOD WIN32 ${H} ${C})
 target_link_libraries (DOD vulkan-1)

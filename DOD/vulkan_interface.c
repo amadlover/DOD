@@ -550,6 +550,48 @@ AGE_RESULT vulkan_interface_init (HINSTANCE h_instance, HWND h_wnd)
 	vkGetDeviceQueue (device, compute_queue_family_index, compute_queue_index, &compute_queue);
 	vkGetDeviceQueue (device, transfer_queue_family_index, transfer_queue_index, &transfer_queue);
 
+	VkCommandPoolCreateInfo transfer_command_pool_create_info = {
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		NULL,
+		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+		graphics_queue_family_index
+	};
+
+	vk_result = vkCreateCommandPool (device, &transfer_command_pool_create_info, NULL, &transfer_command_pool);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_COMMAND_POOL;
+		goto exit;
+	}
+
+	VkSamplerCreateInfo sampler_create_info = {
+		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		NULL,
+		0,
+		VK_FILTER_LINEAR,
+		VK_FILTER_LINEAR,
+		VK_SAMPLER_MIPMAP_MODE_LINEAR,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		0,
+		VK_FALSE,
+		0,
+		VK_FALSE,
+		VK_COMPARE_OP_NEVER,
+		0,
+		0,
+		VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+		VK_FALSE
+	};
+
+	vk_result = vkCreateSampler (device, &sampler_create_info, NULL, &common_sampler);
+	if (vk_result != VK_SUCCESS)
+	{
+		age_result = AGE_ERROR_GRAPHICS_CREATE_SAMPLER;
+		goto exit;
+	}
+
 exit: // clean up allocation made within the function
 
 	for (size_t i = 0; i < requested_instance_layer_count; ++i)
@@ -581,6 +623,16 @@ exit: // clean up allocation made within the function
 
 void vulkan_interface_shutdown (void)
 {
+	if (transfer_command_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool (device, transfer_command_pool, NULL);
+	}
+
+	if (common_sampler != VK_NULL_HANDLE)
+	{
+		vkDestroySampler (device, common_sampler, NULL);
+	}
+
 	if (swapchain_image_views)
 	{
 		for (size_t i = 0; i < swapchain_image_count; ++i)
