@@ -47,9 +47,7 @@ float screen_aspect_ratio = 1;
 
 float background_positions[12] = { -1,-1,0.9f, 1,-1,0.9f, 1,1,0.9f, -1,1,0.9f };
 size_t background_positions_size = sizeof (background_positions);
-float background_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
-size_t background_colors_size = sizeof (background_colors);
-float background_uvs[8] = {0,0, 0,1, 1,0, 1,1};
+float background_uvs[8] = { 0,0, 1,0, 1,1, 0,1 };
 size_t background_uvs_size = sizeof (background_uvs);
 size_t background_indices[6] = { 0,1,2, 0,2,3 };
 size_t background_indices_size = sizeof (background_indices);
@@ -58,24 +56,11 @@ size_t background_index_count = 6;
 
 float actor_positions[12] = { -0.1f,-0.1f,0.5f, 0.1f,-0.1f,0.5f, 0.1f,0.1f,0.5f, -0.1f,0.1f,0.5f };
 size_t actor_positions_size = sizeof (actor_positions);
-float actor_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
-size_t actor_colors_size = sizeof (actor_colors);
-float actor_uvs[8] = { 0,0, 0,1, 1,0, 1,1 };
+float actor_uvs[8] = { 0,0, 1,0, 1,1, 0,1 };
 size_t actor_uvs_size = sizeof (actor_uvs);
 size_t actor_indices[6] = { 0,1,2, 0,2,3 };
 size_t actor_indices_size = sizeof (actor_indices);
 size_t actor_index_count = 6;
-
-
-float player_positions[12] = { -1,-1,0.5f, 1,-1,0.5f, 1,1,0.5f, -1,1,0.5f };
-size_t player_positions_size = sizeof (player_positions);
-float player_colors[12] = { 1,0,0, 0,1,0, 0,0,1, 1,1,1 };
-size_t player_colors_size = sizeof (player_colors);
-float player_uvs[8] = { 0,0, 0,1, 1,0, 1,1 };
-size_t player_uvs_size = sizeof (player_uvs);
-size_t player_indices[6] = { 0,1,2, 0,2,3 };
-size_t player_indices_size = sizeof (player_indices);
-size_t player_index_count = 6;
 
 
 VkImage background_image = VK_NULL_HANDLE;
@@ -107,10 +92,10 @@ AGE_RESULT graphics_create_geometry_buffers (void)
 		NULL,
 		0,
 		(VkDeviceSize)background_positions_size +
-		(VkDeviceSize)background_colors_size +
+		(VkDeviceSize)background_uvs_size +
 		(VkDeviceSize)background_indices_size +
 		(VkDeviceSize)actor_positions_size +
-		(VkDeviceSize)actor_colors_size +
+		(VkDeviceSize)actor_uvs_size +
 		(VkDeviceSize)actor_indices_size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,
@@ -169,10 +154,10 @@ AGE_RESULT graphics_create_geometry_buffers (void)
 		staging_vertex_index_memory,
 		0,
 		(VkDeviceSize)background_positions_size +
-		(VkDeviceSize)background_colors_size +
+		(VkDeviceSize)background_uvs_size +
 		(VkDeviceSize)background_indices_size +
 		(VkDeviceSize)actor_positions_size +
-		(VkDeviceSize)actor_colors_size +
+		(VkDeviceSize)actor_uvs_size +
 		(VkDeviceSize)actor_indices_size,
 		0,
 		&data
@@ -185,11 +170,11 @@ AGE_RESULT graphics_create_geometry_buffers (void)
 	}
 
 	memcpy (data, background_positions, background_positions_size);
-	memcpy ((char*)data + background_positions_size, background_colors, background_colors_size);
-	memcpy ((char*)data + background_positions_size + background_colors_size, background_indices, background_indices_size);
-	memcpy ((char*)data + background_positions_size + background_colors_size + background_indices_size, actor_positions, actor_positions_size);
-	memcpy ((char*)data + background_positions_size + background_colors_size + background_indices_size + actor_positions_size, actor_colors, actor_colors_size);
-	memcpy ((char*)data + background_positions_size + background_colors_size + background_indices_size + actor_positions_size + actor_colors_size, actor_indices, actor_indices_size);
+	memcpy ((char*)data + background_positions_size, background_uvs, background_uvs_size);
+	memcpy ((char*)data + background_positions_size + background_uvs_size, background_indices, background_indices_size);
+	memcpy ((char*)data + background_positions_size + background_uvs_size + background_indices_size, actor_positions, actor_positions_size);
+	memcpy ((char*)data + background_positions_size + background_uvs_size + background_indices_size + actor_positions_size, actor_uvs, actor_uvs_size);
+	memcpy ((char*)data + background_positions_size + background_uvs_size + background_indices_size + actor_positions_size + actor_uvs_size, actor_indices, actor_indices_size);
 
 	vkUnmapMemory (device, staging_vertex_index_memory);
 
@@ -266,10 +251,10 @@ AGE_RESULT graphics_create_geometry_buffers (void)
 		0,
 		0,
 		(VkDeviceSize)background_positions_size +
-		(VkDeviceSize)background_colors_size +
+		(VkDeviceSize)background_uvs_size +
 		(VkDeviceSize)background_indices_size +
 		(VkDeviceSize)actor_positions_size +
-		(VkDeviceSize)actor_colors_size +
+		(VkDeviceSize)actor_uvs_size +
 		(VkDeviceSize)actor_indices_size
 	};
 
@@ -1004,7 +989,7 @@ AGE_RESULT graphics_create_pipeline (void)
 		},
 		{
 			1,
-			sizeof (float) * 3,
+			sizeof (float) * 2,
 			VK_VERTEX_INPUT_RATE_VERTEX
 		}
 	};
@@ -1018,7 +1003,7 @@ AGE_RESULT graphics_create_pipeline (void)
 		{
 			1,
 			1,
-			VK_FORMAT_R32G32B32_SFLOAT,
+			VK_FORMAT_R32G32_SFLOAT,
 			0
 		}
 	};
@@ -1676,10 +1661,10 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_live_actor_count)
 		VkDeviceSize vertex_index_buffer_offsets[6] = {
 			0, 
 			(VkDeviceSize)background_positions_size,
-			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size,
-			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size,
-			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size,
-			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_colors_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size + (VkDeviceSize) actor_colors_size
+			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_uvs_size,
+			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_uvs_size + (VkDeviceSize) background_indices_size,
+			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_uvs_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size,
+			(VkDeviceSize)background_positions_size + (VkDeviceSize)background_uvs_size + (VkDeviceSize) background_indices_size + (VkDeviceSize) actor_positions_size + (VkDeviceSize) actor_uvs_size
 		};
 
 		vkCmdBeginRenderPass (swapchain_command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);

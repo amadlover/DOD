@@ -10,9 +10,9 @@ layout (set = 0, binding = 0) uniform mat_ubo
 } mat_buff;
 
 layout (location = 0) in vec3 in_position;
-layout (location = 1) in vec3 in_color;
+layout (location = 1) in vec2 in_uv;
 
-layout (location = 0) out vec3 out_color;
+layout (location = 0) out vec2 out_uv;
 
 void main ()
 {
@@ -25,5 +25,5 @@ void main ()
 
     gl_Position = vec4 (final_pos, 1);
 
-    out_color = in_color;
+    out_uv = in_uv;
 }
