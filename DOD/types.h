@@ -31,15 +31,16 @@ typedef struct bullet_transform_inputs_
 {
     float2 forward_vector;
     float speed;
+    float lifetime;
 } bullet_transform_inputs;
 
-typedef struct actor_transform_inputs_
+typedef struct asteroid_transform_inputs_
 {
     float2 forward_vector;
     float forward_speed;
     float rotation;
     float rotation_speed;
-} actor_transform_inputs;
+} asteroid_transform_inputs;
 
 typedef struct actor_transform_outputs_
 {
