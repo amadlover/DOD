@@ -23,15 +23,15 @@ bool is_left_arrow_pressed = false;
 
 player_transform_inputs game_player_transform_inputs = { 0 };
 actor_transform_outputs game_player_transform_outputs = { 0 };
-float game_player_shooting_interval_msecs = 200.f;
+float game_player_shooting_interval_msecs = 100.f;
 float game_secs_since_last_shot = 0;
 
 bullet_transform_inputs* game_bullets_transform_inputs = NULL;
-float* game_bullets_current_lifetimes_msecs = NULL;
+size_t* game_bullets_current_lifetimes_msecs = NULL;
 actor_transform_outputs* game_bullets_transform_outputs = NULL;
 actor_id* game_bullets_ids = NULL;
 
-float game_bullets_max_lifetime_msecs = 3000.f;
+float game_bullets_max_lifetime_msecs = 500.f;
 
 asteroid_transform_inputs* game_asteroids_transform_inputs = NULL;
 actor_transform_outputs* game_asteroids_transform_outputs = NULL;
@@ -63,7 +63,7 @@ AGE_RESULT game_reserve_memory_for_asteroids_bullets ()
     game_current_max_bullet_count += game_BULLET_BATCH_SIZE;
     game_bullets_transform_inputs = (bullet_transform_inputs*)utils_calloc (game_current_max_bullet_count, sizeof (bullet_transform_inputs));
     game_bullets_transform_outputs = (actor_transform_outputs*)utils_calloc (game_current_max_bullet_count, sizeof (actor_transform_outputs));
-    game_bullets_current_lifetimes_msecs = (float*)utils_calloc (game_current_max_bullet_count, sizeof (float));
+    game_bullets_current_lifetimes_msecs = (size_t*)utils_calloc (game_current_max_bullet_count, sizeof (size_t));
     game_bullets_ids = (actor_id*)utils_calloc (game_current_max_bullet_count, sizeof (actor_id));
 
 exit: // clean up allocations done in this function
@@ -142,10 +142,6 @@ AGE_RESULT game_asteroid_add (void)
 
     ++game_asteroid_live_count;
 
-    printf ("GAME\n");
-    printf ("current max asteroids %d, asteroid count %d ASTEROID BATCH SIZE %d\n", game_current_max_asteroid_count, game_asteroid_live_count, game_ASTEROID_BATCH_SIZE);
-
-
     age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
     if (age_result != AGE_SUCCESS)
     {
@@ -158,7 +154,6 @@ exit:
 
 AGE_RESULT game_process_left_mouse_click (const int32_t x, const int32_t y)
 {
-    printf ("Left click at %d %d\n", x, y);
     AGE_RESULT age_result = AGE_SUCCESS;
 
     age_result = game_asteroid_add ();
@@ -178,8 +173,6 @@ AGE_RESULT game_asteroid_remove (void)
     srand (rand ());
     size_t actor_index_to_remove = (size_t)(((float)rand () / (float)RAND_MAX) * game_asteroid_live_count);
 
-    printf ("index to remove: %d\n", actor_index_to_remove);
-
     if (game_asteroid_live_count > 0)
     {
         for (size_t a = actor_index_to_remove; a < game_asteroid_live_count; ++a)
@@ -193,9 +186,6 @@ AGE_RESULT game_asteroid_remove (void)
         }
 
         --game_asteroid_live_count;
-
-        printf ("GAME\n");
-        printf ("current max asteroids %d, asteroid count %d ASTEROID BATCH SIZE %d\n", game_current_max_asteroid_count, game_asteroid_live_count, game_ASTEROID_BATCH_SIZE);
     }
 
     age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
@@ -210,8 +200,6 @@ exit:
 
 AGE_RESULT game_process_right_mouse_click (const int32_t x, const int32_t y)
 {
-    printf ("Right click at %d %d\n", x, y);
-
     AGE_RESULT age_result = AGE_SUCCESS;
 
     age_result = game_asteroid_remove ();
@@ -333,7 +321,7 @@ AGE_RESULT game_bullet_add (void)
 
         game_bullets_transform_inputs = (bullet_transform_inputs*)utils_realloc (game_bullets_transform_inputs, sizeof (bullet_transform_inputs) * game_current_max_bullet_count);
         game_bullets_transform_outputs = (actor_transform_outputs*)utils_realloc (game_bullets_transform_outputs, sizeof (actor_transform_outputs) * game_current_max_bullet_count);
-        game_bullets_current_lifetimes_msecs = (float*)utils_realloc (game_bullets_current_lifetimes_msecs, sizeof (float) * game_current_max_bullet_count);
+        game_bullets_current_lifetimes_msecs = (size_t*)utils_realloc (game_bullets_current_lifetimes_msecs, sizeof (size_t) * game_current_max_bullet_count);
         game_bullets_ids = (actor_id*)utils_realloc (game_bullets_ids, sizeof (actor_id) * game_current_max_bullet_count);
 
         age_result = graphics_create_transforms_buffer (game_current_max_asteroid_count + game_current_max_bullet_count);
@@ -351,9 +339,10 @@ AGE_RESULT game_bullet_add (void)
     game_bullets_transform_outputs[game_bullet_live_count].rotation = game_player_transform_outputs.rotation;
     
     game_bullets_transform_inputs[game_bullet_live_count].forward_vector = game_player_transform_inputs.forward_vector;
-    game_bullets_transform_inputs[game_bullet_live_count].speed = float2_length (&game_player_transform_inputs.v) + 0.01f;
+    game_bullets_transform_inputs[game_bullet_live_count].speed = float2_length (&game_player_transform_inputs.v) + 0.05f;
 
     game_bullets_current_lifetimes_msecs[game_bullet_live_count] = 0;
+    game_bullets_ids[game_bullet_live_count].id = game_bullet_live_count;
 
     ++game_bullet_live_count;
 
@@ -366,23 +355,12 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_bullet_remove (size_t id)
+AGE_RESULT game_bullet_remove (size_t index_to_remove)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
     if (game_bullet_live_count > 0)
     {
-        size_t index_to_remove = -1;
-
-        for (size_t b = 0; b < game_bullet_live_count; ++b)
-        {
-            if (game_bullets_ids[b].id == id)
-            {
-                index_to_remove = b;
-                break;
-            }
-        }
-
         for (size_t b = index_to_remove; b < game_bullet_live_count; ++b)
         {
             game_bullets_transform_inputs[b] = game_bullets_transform_inputs[b + 1];
@@ -398,6 +376,11 @@ AGE_RESULT game_bullet_remove (size_t id)
             game_bullets_ids[b] = game_bullets_ids[b + 1];
         }
 
+        for (size_t b = index_to_remove; b < game_bullet_live_count; ++b)
+        {
+            game_bullets_current_lifetimes_msecs[b] = game_bullets_current_lifetimes_msecs[b + 1];
+        }
+        
         --game_bullet_live_count;
     }
 
@@ -436,9 +419,18 @@ AGE_RESULT game_bullets_check_life (size_t delta_msecs)
 
     for (size_t b = 0; b < game_bullet_live_count; ++b)
     {
+        game_bullets_current_lifetimes_msecs[b] += delta_msecs;
+    }
+
+    for (size_t b = 0; b < game_bullet_live_count; ++b)
+    {
         if (game_bullets_current_lifetimes_msecs[b] > game_bullets_max_lifetime_msecs)
         {
-            age_result = game_bullet_remove (game_bullets_ids[b].id);
+            age_result = game_bullet_remove (b);
+            if (age_result != AGE_SUCCESS)
+            {
+                goto exit;
+            }
         }
     }
 
