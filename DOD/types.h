@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 
 typedef struct float2_
 {
@@ -24,14 +26,12 @@ typedef struct player_transform_inputs_
     float rotation;
     float rotation_speed;
     float damping_factor;
-    float firing_rate;
 } player_transform_inputs;
 
 typedef struct bullet_transform_inputs_
 {
     float2 forward_vector;
     float speed;
-    float lifetime;
 } bullet_transform_inputs;
 
 typedef struct asteroid_transform_inputs_
@@ -46,8 +46,14 @@ typedef struct actor_transform_outputs_
 {
     float2 position;
     float rotation;
+    float2 scale;
 } actor_transform_outputs;
 
+
+typedef struct actor_id_
+{
+    size_t id;
+} actor_id;
 
 float float2_length (const float2* in_vector);
 void float2_normalize (float2* in_vector);
