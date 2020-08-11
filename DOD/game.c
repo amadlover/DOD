@@ -77,11 +77,11 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 
     game_player_transform_inputs.damping_factor = 0.99f;
     game_player_transform_inputs.forward_vector.x = 0;
-
     game_player_transform_inputs.forward_vector.y = 1;
     game_player_transform_inputs.acceleration = 0.00005f;
     game_player_transform_inputs.deceleration = -0.000025f;
     game_player_transform_inputs.rotation_speed = 0.005f;
+    game_player_transform_inputs.max_velocity = 0.05f;
 
     GetClientRect (h_wnd, &window_rect);
 
@@ -246,6 +246,11 @@ AGE_RESULT game_player_increase_speed (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
+    if (hypot (game_player_transform_inputs.v.x, game_player_transform_inputs.v.y) > game_player_transform_inputs.max_velocity)
+    {
+        goto exit;
+    }
+
     float2 acceleration = { 
         game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.x, 
         game_player_transform_inputs.acceleration * game_player_transform_inputs.forward_vector.y 
@@ -263,6 +268,11 @@ exit:
 AGE_RESULT game_player_decrease_speed (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
+
+    if (hypot (game_player_transform_inputs.v.x, game_player_transform_inputs.v.y) > game_player_transform_inputs.max_velocity)
+    {
+        goto exit;
+    }
 
     float2 deceleration = { 
         game_player_transform_inputs.deceleration * game_player_transform_inputs.forward_vector.x,

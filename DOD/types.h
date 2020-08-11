@@ -26,6 +26,7 @@ typedef struct player_transform_inputs_
     float rotation;
     float rotation_speed;
     float damping_factor;
+    float max_velocity;
 } player_transform_inputs;
 
 typedef struct bullet_transform_inputs_
