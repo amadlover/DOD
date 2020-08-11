@@ -75,13 +75,13 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.damping_factor = 0.975f;
+    game_player_transform_inputs.damping_factor = 0.99f;
     game_player_transform_inputs.forward_vector.x = 0;
 
     game_player_transform_inputs.forward_vector.y = 1;
     game_player_transform_inputs.acceleration = 0.00005f;
     game_player_transform_inputs.deceleration = -0.000025f;
-    game_player_transform_inputs.rotation_speed = 0.075f;
+    game_player_transform_inputs.rotation_speed = 0.005f;
 
     GetClientRect (h_wnd, &window_rect);
 
@@ -135,8 +135,8 @@ AGE_RESULT game_asteroid_add (void)
 
     game_asteroids_transform_inputs[game_asteroid_live_count].forward_vector.x = ((float)rand () / (float)RAND_MAX) * 2 - 1;
     game_asteroids_transform_inputs[game_asteroid_live_count].forward_vector.y = ((float)rand () / (float)RAND_MAX) * 2 - 1;
-    game_asteroids_transform_inputs[game_asteroid_live_count].forward_speed = ((float)rand () / (float)RAND_MAX) / 500.f;
-    game_asteroids_transform_inputs[game_asteroid_live_count].rotation_speed = (((float)rand () / (float)RAND_MAX)) / 50.f;
+    game_asteroids_transform_inputs[game_asteroid_live_count].forward_speed = ((float)rand () / (float)RAND_MAX) / 1000.f;
+    game_asteroids_transform_inputs[game_asteroid_live_count].rotation_speed = (((float)rand () / (float)RAND_MAX)) / 500.f;
 
     game_asteroids_ids[game_asteroid_live_count].id = game_asteroid_live_count;
 
@@ -282,7 +282,7 @@ AGE_RESULT game_player_turn_right (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.rotation -= game_player_transform_inputs.rotation_speed;
+    game_player_transform_inputs.rotation -= (game_player_transform_inputs.rotation_speed * game_delta_time);
     game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
 
     age_result = game_update_player_vectors ();
@@ -299,7 +299,7 @@ AGE_RESULT game_player_turn_left (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
     
-    game_player_transform_inputs.rotation += game_player_transform_inputs.rotation_speed;
+    game_player_transform_inputs.rotation += (game_player_transform_inputs.rotation_speed * game_delta_time);
     game_player_transform_outputs.rotation = game_player_transform_inputs.rotation;
 
     age_result = game_update_player_vectors ();
@@ -339,7 +339,7 @@ AGE_RESULT game_bullet_add (void)
     game_bullets_transform_outputs[game_bullet_live_count].rotation = game_player_transform_outputs.rotation;
     
     game_bullets_transform_inputs[game_bullet_live_count].forward_vector = game_player_transform_inputs.forward_vector;
-    game_bullets_transform_inputs[game_bullet_live_count].speed = float2_length (&game_player_transform_inputs.v) + 0.05f;
+    game_bullets_transform_inputs[game_bullet_live_count].speed = (float2_length (&game_player_transform_inputs.v) / (float)game_delta_time) + 0.005f;
 
     game_bullets_current_lifetimes_msecs[game_bullet_live_count] = 0;
     game_bullets_ids[game_bullet_live_count].id = game_bullet_live_count;
@@ -413,13 +413,13 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_bullets_check_life (size_t delta_msecs)
+AGE_RESULT game_bullets_check_life (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
     for (size_t b = 0; b < game_bullet_live_count; ++b)
     {
-        game_bullets_current_lifetimes_msecs[b] += delta_msecs;
+        game_bullets_current_lifetimes_msecs[b] += game_delta_time;
     }
 
     for (size_t b = 0; b < game_bullet_live_count; ++b)
@@ -567,8 +567,8 @@ AGE_RESULT game_update_player_asteroids_bullets_output_positions (void)
 
     for (size_t a = 0; a < game_asteroid_live_count; ++a)
     {
-        game_asteroids_transform_outputs[a].position.x += (game_asteroids_transform_inputs[a].forward_vector.x * game_asteroids_transform_inputs[a].forward_speed);
-        game_asteroids_transform_outputs[a].position.y += (game_asteroids_transform_inputs[a].forward_vector.y * game_asteroids_transform_inputs[a].forward_speed);
+        game_asteroids_transform_outputs[a].position.x += (game_asteroids_transform_inputs[a].forward_vector.x * game_asteroids_transform_inputs[a].forward_speed * game_delta_time);
+        game_asteroids_transform_outputs[a].position.y += (game_asteroids_transform_inputs[a].forward_vector.y * game_asteroids_transform_inputs[a].forward_speed * game_delta_time);
 
         if (game_asteroids_transform_outputs[a].position.x > 1.f)
         {
@@ -590,13 +590,13 @@ AGE_RESULT game_update_player_asteroids_bullets_output_positions (void)
             game_asteroids_transform_outputs[a].position.y = 1.f;
         }
 
-        game_asteroids_transform_outputs[a].rotation += (game_asteroids_transform_inputs[a].rotation_speed);
+        game_asteroids_transform_outputs[a].rotation += (game_asteroids_transform_inputs[a].rotation_speed) * game_delta_time;
     }
 
     for (size_t b = 0; b < game_bullet_live_count; ++b)
     {
-        game_bullets_transform_outputs[b].position.x += game_bullets_transform_inputs[b].forward_vector.x * game_bullets_transform_inputs[b].speed;
-        game_bullets_transform_outputs[b].position.y += game_bullets_transform_inputs[b].forward_vector.y * game_bullets_transform_inputs[b].speed;
+        game_bullets_transform_outputs[b].position.x += (game_bullets_transform_inputs[b].forward_vector.x * (game_bullets_transform_inputs[b].speed * game_delta_time));
+        game_bullets_transform_outputs[b].position.y += (game_bullets_transform_inputs[b].forward_vector.y * (game_bullets_transform_inputs[b].speed * game_delta_time));
 
         if (game_bullets_transform_outputs[b].position.x > 1.f)
         {
@@ -623,15 +623,15 @@ exit:
     return age_result;
 }
 
-AGE_RESULT game_apply_player_damping (void)
+AGE_RESULT game_player_apply_damping (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.v.x *= game_player_transform_inputs.damping_factor;
-    game_player_transform_inputs.v.y *= game_player_transform_inputs.damping_factor;
+    game_player_transform_inputs.v.x *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
+    game_player_transform_inputs.v.y *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
 
-    game_player_transform_inputs.u.x *= game_player_transform_inputs.damping_factor;
-    game_player_transform_inputs.u.y *= game_player_transform_inputs.damping_factor;
+    game_player_transform_inputs.u.x *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
+    game_player_transform_inputs.u.y *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
 
 exit:
     return age_result;
@@ -730,7 +730,9 @@ AGE_RESULT game_update (size_t delta_msecs)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_secs_since_last_shot += delta_msecs;
+    game_delta_time = delta_msecs;
+
+    game_secs_since_last_shot += game_delta_time;;
 
     age_result = game_process_player_input ();
     if (age_result != AGE_SUCCESS)
@@ -738,13 +740,13 @@ AGE_RESULT game_update (size_t delta_msecs)
         goto exit;
     }
 
-    age_result = game_apply_player_damping ();
+    age_result = game_player_apply_damping ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
     }
 
-    age_result = game_bullets_check_life (delta_msecs);
+    age_result = game_bullets_check_life ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -761,8 +763,6 @@ AGE_RESULT game_update (size_t delta_msecs)
     {
         goto exit;
     }
-
-    game_delta_time = delta_msecs;
 
 exit: // clear function specific allocations
     return age_result;
