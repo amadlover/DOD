@@ -1615,9 +1615,7 @@ AGE_RESULT graphics_update_transforms_buffer_data (
 	AGE_RESULT age_result = AGE_SUCCESS;
 
 	memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform), game_player_transform_outputs, sizeof (actor_transform_outputs)); 
-	/*memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * 2), game_asteroids_transform_outputs, sizeof (actor_transform_outputs) * game_asteroid_current_max_count);
-	memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (game_asteroid_current_max_count + 2)), game_bullets_transform_outputs, sizeof (actor_transform_outputs) * game_bullet_current_max_count);*/
-
+	
 	for (size_t a = 0; a < game_asteroid_live_count; ++a)
 	{
 		memcpy ((char*)transforms_aligned_data + (aligned_size_per_transform * (a + 2)), game_asteroids_transform_outputs + a, sizeof (actor_transform_outputs));

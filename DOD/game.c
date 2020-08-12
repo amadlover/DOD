@@ -78,8 +78,8 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
     game_player_transform_inputs.time_msecs_to_come_to_rest = 500.f;
     game_player_transform_inputs.forward_vector.x = 0;
     game_player_transform_inputs.forward_vector.y = 1;
-    game_player_transform_inputs.acceleration = 0.0005f;
-    game_player_transform_inputs.deceleration = -0.00025f;
+    game_player_transform_inputs.acceleration = 0.000125f;
+    game_player_transform_inputs.deceleration = -0.0000625f;
     game_player_transform_inputs.rotation_speed = 0.005f;
     game_player_transform_inputs.max_velocity = 0.05f;
 

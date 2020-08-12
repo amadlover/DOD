@@ -13,6 +13,10 @@ float float_max (const float a, const float b)
     {
         return b;
     }
+    else
+    {
+        return -1;
+    }
 }
 
 float fload_min (const float a, const float b)
@@ -24,6 +28,10 @@ float fload_min (const float a, const float b)
     else if (b < a)
     {
         return b;
+    }
+    else
+    {
+        return -1;
     }
 }
 
