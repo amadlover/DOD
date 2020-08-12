@@ -1626,7 +1626,6 @@ exit:
 
 AGE_RESULT graphics_update_command_buffers (const size_t game_asteroid_live_count, const size_t game_bullet_live_count)
 {
-	printf ("graphics_update_command_buffers\n");
 	AGE_RESULT age_result = AGE_SUCCESS;
 	VkResult vk_result = VK_SUCCESS;
 

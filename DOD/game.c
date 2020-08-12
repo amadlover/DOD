@@ -75,11 +75,11 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.damping_factor = 0.99f;
+    game_player_transform_inputs.time_msecs_to_come_to_rest = 500.f;
     game_player_transform_inputs.forward_vector.x = 0;
     game_player_transform_inputs.forward_vector.y = 1;
-    game_player_transform_inputs.acceleration = 0.00005f;
-    game_player_transform_inputs.deceleration = -0.000025f;
+    game_player_transform_inputs.acceleration = 0.0005f;
+    game_player_transform_inputs.deceleration = -0.00025f;
     game_player_transform_inputs.rotation_speed = 0.005f;
     game_player_transform_inputs.max_velocity = 0.05f;
 
@@ -659,11 +659,20 @@ AGE_RESULT game_player_apply_damping (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_player_transform_inputs.v.x *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
-    game_player_transform_inputs.v.y *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
+    float damping_value = 1;
 
-    game_player_transform_inputs.u.x *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
-    game_player_transform_inputs.u.y *= (game_player_transform_inputs.damping_factor);// / (float)game_delta_time);
+    if (game_delta_time < game_player_transform_inputs.time_msecs_to_come_to_rest)
+    {
+        damping_value = (1 - (game_delta_time / game_player_transform_inputs.time_msecs_to_come_to_rest));
+    }
+
+    game_player_transform_inputs.v.x *= damping_value;
+    game_player_transform_inputs.v.y *= damping_value;
+
+    game_player_transform_inputs.u.x *= damping_value;
+    game_player_transform_inputs.u.y *= damping_value;
+
+    printf ("v.x: %f v.y: %f\n", game_player_transform_inputs.v.x, game_player_transform_inputs.v.y);
 
 exit:
     return age_result;
