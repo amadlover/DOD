@@ -56,5 +56,9 @@ typedef struct actor_id_
     size_t id;
 } actor_id;
 
+
+float float_max (const float a, const float b);
+float float_min (const float a, const float b);
+float float_clamp (const float value, const float min, const float max);
 float float2_length (const float2* in_vector);
 void float2_normalize (float2* in_vector);

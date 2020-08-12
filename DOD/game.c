@@ -37,9 +37,9 @@ asteroid_transform_inputs* game_asteroids_transform_inputs = NULL;
 actor_transform_outputs* game_asteroids_transform_outputs = NULL;
 actor_id* game_asteroids_ids = NULL;
 
-size_t game_current_max_asteroid_count = 0;
+size_t game_asteroid_current_max_count = 0;
 size_t game_asteroid_live_count = 0;
-size_t game_current_max_bullet_count = 0;
+size_t game_bullet_current_max_count = 0;
 size_t game_bullet_live_count = 0;
 const size_t game_ASTEROID_BATCH_SIZE = 20;
 const size_t game_BULLET_BATCH_SIZE = 20;
@@ -55,16 +55,16 @@ AGE_RESULT game_reserve_memory_for_asteroids_bullets ()
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    game_current_max_asteroid_count += game_ASTEROID_BATCH_SIZE;
-    game_asteroids_transform_inputs = (asteroid_transform_inputs*)utils_calloc (game_current_max_asteroid_count, sizeof (asteroid_transform_inputs));
-    game_asteroids_transform_outputs = (actor_transform_outputs*)utils_calloc (game_current_max_asteroid_count, sizeof (actor_transform_outputs));
-    game_asteroids_ids = (actor_id*)utils_calloc (game_current_max_asteroid_count, sizeof (actor_id));
+    game_asteroid_current_max_count += game_ASTEROID_BATCH_SIZE;
+    game_asteroids_transform_inputs = (asteroid_transform_inputs*)utils_calloc (game_asteroid_current_max_count, sizeof (asteroid_transform_inputs));
+    game_asteroids_transform_outputs = (actor_transform_outputs*)utils_calloc (game_asteroid_current_max_count, sizeof (actor_transform_outputs));
+    game_asteroids_ids = (actor_id*)utils_calloc (game_asteroid_current_max_count, sizeof (actor_id));
 
-    game_current_max_bullet_count += game_BULLET_BATCH_SIZE;
-    game_bullets_transform_inputs = (bullet_transform_inputs*)utils_calloc (game_current_max_bullet_count, sizeof (bullet_transform_inputs));
-    game_bullets_transform_outputs = (actor_transform_outputs*)utils_calloc (game_current_max_bullet_count, sizeof (actor_transform_outputs));
-    game_bullets_current_lifetimes_msecs = (size_t*)utils_calloc (game_current_max_bullet_count, sizeof (size_t));
-    game_bullets_ids = (actor_id*)utils_calloc (game_current_max_bullet_count, sizeof (actor_id));
+    game_bullet_current_max_count += game_BULLET_BATCH_SIZE;
+    game_bullets_transform_inputs = (bullet_transform_inputs*)utils_calloc (game_bullet_current_max_count, sizeof (bullet_transform_inputs));
+    game_bullets_transform_outputs = (actor_transform_outputs*)utils_calloc (game_bullet_current_max_count, sizeof (actor_transform_outputs));
+    game_bullets_current_lifetimes_msecs = (size_t*)utils_calloc (game_bullet_current_max_count, sizeof (size_t));
+    game_bullets_ids = (actor_id*)utils_calloc (game_bullet_current_max_count, sizeof (actor_id));
 
 exit: // clean up allocations done in this function
 
@@ -99,7 +99,7 @@ AGE_RESULT game_init (const HINSTANCE h_instance, const HWND h_wnd)
         goto exit;
     }
 
-    age_result = graphics_init (game_current_max_asteroid_count, game_asteroid_live_count, game_current_max_bullet_count, game_bullet_live_count);
+    age_result = graphics_init (game_asteroid_current_max_count, game_asteroid_live_count, game_bullet_current_max_count, game_bullet_live_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -113,15 +113,15 @@ AGE_RESULT game_asteroid_add (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    if (game_asteroid_live_count == game_current_max_asteroid_count)
+    if (game_asteroid_live_count == game_asteroid_current_max_count)
     {
-        game_current_max_asteroid_count += game_ASTEROID_BATCH_SIZE;
+        game_asteroid_current_max_count += game_ASTEROID_BATCH_SIZE;
 
-        game_asteroids_transform_inputs = (asteroid_transform_inputs*) utils_realloc (game_asteroids_transform_inputs, sizeof (asteroid_transform_inputs) * game_current_max_asteroid_count);
-        game_asteroids_transform_outputs = (actor_transform_outputs*) utils_realloc (game_asteroids_transform_outputs, sizeof (actor_transform_outputs) * game_current_max_asteroid_count);
-        game_asteroids_ids = (actor_id*) utils_realloc (game_asteroids_ids, game_current_max_asteroid_count);
+        game_asteroids_transform_inputs = (asteroid_transform_inputs*) utils_realloc (game_asteroids_transform_inputs, sizeof (asteroid_transform_inputs) * game_asteroid_current_max_count);
+        game_asteroids_transform_outputs = (actor_transform_outputs*) utils_realloc (game_asteroids_transform_outputs, sizeof (actor_transform_outputs) * game_asteroid_current_max_count);
+        game_asteroids_ids = (actor_id*) utils_realloc (game_asteroids_ids, game_asteroid_current_max_count);
         
-        age_result = graphics_create_transforms_buffer (game_current_max_asteroid_count + game_current_max_bullet_count);
+        age_result = graphics_create_transforms_buffer (game_asteroid_current_max_count + game_bullet_current_max_count);
         if (age_result != AGE_SUCCESS)
         {
             goto exit;
@@ -331,16 +331,16 @@ AGE_RESULT game_bullet_add (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
 
-    if (game_bullet_live_count == game_current_max_bullet_count)
+    if (game_bullet_live_count == game_bullet_current_max_count)
     {
-        game_current_max_bullet_count += game_BULLET_BATCH_SIZE;
+        game_bullet_current_max_count += game_BULLET_BATCH_SIZE;
 
-        game_bullets_transform_inputs = (bullet_transform_inputs*)utils_realloc (game_bullets_transform_inputs, sizeof (bullet_transform_inputs) * game_current_max_bullet_count);
-        game_bullets_transform_outputs = (actor_transform_outputs*)utils_realloc (game_bullets_transform_outputs, sizeof (actor_transform_outputs) * game_current_max_bullet_count);
-        game_bullets_current_lifetimes_msecs = (size_t*)utils_realloc (game_bullets_current_lifetimes_msecs, sizeof (size_t) * game_current_max_bullet_count);
-        game_bullets_ids = (actor_id*)utils_realloc (game_bullets_ids, sizeof (actor_id) * game_current_max_bullet_count);
+        game_bullets_transform_inputs = (bullet_transform_inputs*)utils_realloc (game_bullets_transform_inputs, sizeof (bullet_transform_inputs) * game_bullet_current_max_count);
+        game_bullets_transform_outputs = (actor_transform_outputs*)utils_realloc (game_bullets_transform_outputs, sizeof (actor_transform_outputs) * game_bullet_current_max_count);
+        game_bullets_current_lifetimes_msecs = (size_t*)utils_realloc (game_bullets_current_lifetimes_msecs, sizeof (size_t) * game_bullet_current_max_count);
+        game_bullets_ids = (actor_id*)utils_realloc (game_bullets_ids, sizeof (actor_id) * game_bullet_current_max_count);
 
-        age_result = graphics_create_transforms_buffer (game_current_max_asteroid_count + game_current_max_bullet_count);
+        age_result = graphics_create_transforms_buffer (game_asteroid_current_max_count + game_bullet_current_max_count);
         if (age_result != AGE_SUCCESS)
         {
             goto exit;
@@ -672,8 +672,6 @@ AGE_RESULT game_player_apply_damping (void)
     game_player_transform_inputs.u.x *= damping_value;
     game_player_transform_inputs.u.y *= damping_value;
 
-    printf ("v.x: %f v.y: %f\n", game_player_transform_inputs.v.x, game_player_transform_inputs.v.y);
-
 exit:
     return age_result;
 }
@@ -815,6 +813,12 @@ AGE_RESULT game_update (size_t delta_msecs)
         goto exit;
     }
 
+    age_result = game_update_player_asteroids_bullets_output_positions ();
+    if (age_result != AGE_SUCCESS)
+    {
+        goto exit;
+    }
+
     age_result = game_player_apply_damping ();
     if (age_result != AGE_SUCCESS)
     {
@@ -822,12 +826,6 @@ AGE_RESULT game_update (size_t delta_msecs)
     }
 
     age_result = game_bullets_check_life ();
-    if (age_result != AGE_SUCCESS)
-    {
-        goto exit;
-    }
-
-    age_result = game_update_player_asteroids_bullets_output_positions ();
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
@@ -842,9 +840,11 @@ AGE_RESULT game_update (size_t delta_msecs)
     age_result = graphics_update_transforms_buffer_data (
         &game_player_transform_outputs, 
         game_asteroids_transform_outputs, 
-        game_asteroid_live_count, 
+        game_asteroid_live_count,
+        game_asteroid_current_max_count,
         game_bullets_transform_outputs,
-        game_bullet_live_count
+        game_bullet_live_count,
+        game_bullet_current_max_count
     );
     if (age_result != AGE_SUCCESS)
     {
