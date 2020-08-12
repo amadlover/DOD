@@ -32,7 +32,6 @@ VkDescriptorSetLayout transform_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSet transform_descriptor_set = VK_NULL_HANDLE;
 VkDescriptorSetLayout texture_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSet texture_descriptor_set = VK_NULL_HANDLE;
-VkSampler common_sampler = VK_NULL_HANDLE;
 
 VkBuffer transforms_buffer = VK_NULL_HANDLE;
 VkDeviceMemory transforms_buffer_memory = VK_NULL_HANDLE;
@@ -1313,7 +1312,6 @@ exit:
 	return age_result;
 }
 
-
 AGE_RESULT graphics_create_descriptor_sets (void)
 {
 	AGE_RESULT age_result = AGE_SUCCESS;
@@ -1743,7 +1741,6 @@ AGE_RESULT graphics_update_command_buffers (const size_t game_asteroid_live_coun
 exit: // clear function specific allocations before exit
 	return age_result;
 }
-
 
 AGE_RESULT graphics_init (const size_t game_asteroid_current_max_count, const size_t game_asteroid_live_count, const size_t game_bullet_current_max_count, const size_t game_bullet_live_count)
 {

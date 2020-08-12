@@ -367,6 +367,8 @@ AGE_RESULT game_bullet_add (void)
     {
         goto exit;
     }
+
+    printf ("bullet live count: %d\n", game_bullet_live_count);
 exit:
     return age_result;
 }
@@ -410,6 +412,19 @@ exit:
     return age_result;
 }
 
+AGE_RESULT game_bullets_remove (size_t* indices_to_remove, size_t indices_count)
+{
+    AGE_RESULT age_result = AGE_SUCCESS;
+
+    for (size_t i = 0; i < indices_count; ++i)
+    {
+
+    }
+
+exit:
+    return age_result;
+}
+
 AGE_RESULT game_player_attempt_to_shoot (void)
 {
     AGE_RESULT age_result = AGE_SUCCESS;
@@ -447,6 +462,8 @@ AGE_RESULT game_bullets_check_life (void)
             {
                 goto exit;
             }
+
+            break;
         }
     }
 
@@ -609,6 +626,8 @@ AGE_RESULT game_update_player_asteroids_bullets_output_positions (void)
         game_asteroids_transform_outputs[a].rotation += (game_asteroids_transform_inputs[a].rotation_speed) * game_delta_time;
     }
 
+    size_t* bullet_indices_to_remove = utils_malloc (sizeof (size_t) * game_bullet_live_count);
+
     for (size_t b = 0; b < game_bullet_live_count; ++b)
     {
         game_bullets_transform_outputs[b].position.x += (game_bullets_transform_inputs[b].forward_vector.x * (game_bullets_transform_inputs[b].speed * game_delta_time));
@@ -621,37 +640,40 @@ AGE_RESULT game_update_player_asteroids_bullets_output_positions (void)
             {
                 goto exit;
             }
-        }
-
-        if (game_bullets_transform_outputs[b].position.x < -1.f)
+            break;
+        } 
+        else if (game_bullets_transform_outputs[b].position.x < -1.f)
         {
             age_result = game_bullet_remove (b);
             if (age_result != AGE_SUCCESS)
             {
                 goto exit;
             }
+            break;
         }
-
-        if (game_bullets_transform_outputs[b].position.y > 1.f)
+        else if (game_bullets_transform_outputs[b].position.y > 1.f)
         {
             age_result = game_bullet_remove (b);
             if (age_result != AGE_SUCCESS)
             {
                 goto exit;
             }
+            break;
         }
-
-        if (game_bullets_transform_outputs[b].position.y < -1.f)
+        else if (game_bullets_transform_outputs[b].position.y < -1.f)
         {
             age_result = game_bullet_remove (b);
             if (age_result != AGE_SUCCESS)
             {
                 goto exit;
             }
+            break;
         }
     }
 
 exit:
+    utils_free (bullet_indices_to_remove);
+
     return age_result;
 }
 
