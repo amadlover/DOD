@@ -50,6 +50,8 @@ int32_t last_mouse_y;
 
 size_t game_delta_time = 0;
 
+bool should_update_command_buffers = false;
+
 
 AGE_RESULT game_reserve_memory_for_asteroids_bullets ()
 {
@@ -143,11 +145,13 @@ AGE_RESULT game_asteroid_add (void)
 
     ++game_asteroid_live_count;
 
-    age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
+    should_update_command_buffers = true;
+
+    /*age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
-    }
+    }*/
 
 exit:
     return age_result;;
@@ -194,11 +198,13 @@ AGE_RESULT game_asteroid_remove (size_t index_to_remove)
         --game_asteroid_live_count;
     }
 
-    age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
+    should_update_command_buffers = true;
+
+    /*age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
-    }
+    }*/
 
 exit:
     return age_result;
@@ -362,13 +368,14 @@ AGE_RESULT game_bullet_add (void)
 
     ++game_bullet_live_count;
 
-    age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
+    should_update_command_buffers = true;
+
+    /*age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
-    }
+    }*/
 
-    printf ("bullet live count: %d\n", game_bullet_live_count);
 exit:
     return age_result;
 }
@@ -402,11 +409,13 @@ AGE_RESULT game_bullet_remove (size_t index_to_remove)
         --game_bullet_live_count;
     }
 
-    age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
+    should_update_command_buffers = true;
+
+    /*age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
-    }
+    }*/
 
 exit:
     return age_result;
@@ -871,6 +880,16 @@ AGE_RESULT game_update (size_t delta_msecs)
     if (age_result != AGE_SUCCESS)
     {
         goto exit;
+    }
+
+    if (should_update_command_buffers)
+    {
+        age_result = graphics_update_command_buffers (game_asteroid_live_count, game_bullet_live_count);
+        if (age_result != AGE_SUCCESS) 
+        {
+            goto exit;
+        }
+        should_update_command_buffers = false;
     }
 
 exit: // clear function specific allocations
